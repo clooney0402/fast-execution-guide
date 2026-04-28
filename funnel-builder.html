@@ -1,0 +1,2976 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Funnel Builder · 퍼널 빌더</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e1014;
+  --bg-elev: #15181f;
+  --bg-canvas: #0a0c10;
+  --grid: #1a1d25;
+  --grid-strong: #232732;
+  --line: #2a2f3a;
+  --line-strong: #3a4150;
+  --text: #e4e6eb;
+  --text-dim: #8a93a6;
+  --text-mute: #5b6273;
+  --accent: #7dd3a0;
+  --accent-dim: #4a8a6a;
+  --warn: #e8a857;
+  --bad: #e87171;
+  --node-bg: #1a1e27;
+  --node-bg-hover: #1f242f;
+  --node-border: #2d3340;
+  --node-border-active: #7dd3a0;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  --shadow-lg: 0 4px 8px rgba(0,0,0,.5), 0 20px 60px rgba(0,0,0,.5);
+  --font-sans: 'IBM Plex Sans KR', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'IBM Plex Sans KR', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea { font-family: inherit; }
+
+/* ===== Layout ===== */
+.app {
+  display: grid;
+  grid-template-rows: 48px 1fr;
+  grid-template-columns: 240px 1fr 320px;
+  grid-template-areas:
+    "header header header"
+    "sidebar canvas inspector";
+  height: 100vh;
+}
+
+/* ===== Header ===== */
+.header {
+  grid-area: header;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  z-index: 10;
+}
+.brand {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand-dot {
+  width: 8px; height: 8px;
+  background: var(--accent);
+  border-radius: 1px;
+  box-shadow: 0 0 12px var(--accent);
+}
+.brand-name { color: var(--text); }
+.brand-sub { color: var(--text-mute); font-weight: 400; }
+
+.funnel-tabs {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.funnel-tabs::-webkit-scrollbar { display: none; }
+
+.funnel-tab {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: background .12s, color .12s;
+}
+.funnel-tab:hover { background: rgba(255,255,255,.04); color: var(--text); }
+.funnel-tab.active {
+  background: rgba(125,211,160,.08);
+  color: var(--accent);
+}
+.funnel-tab .close-x {
+  opacity: 0.5;
+  font-size: 16px;
+  color: var(--text-mute);
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: all .12s;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.funnel-tab:hover .close-x,
+.funnel-tab.active .close-x { opacity: 1; }
+.funnel-tab .close-x:hover { background: rgba(232,113,113,.15); color: var(--bad); opacity: 1; }
+.funnel-tab .rename-input {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--text);
+  font-size: 12px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  width: 120px;
+  outline: none;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.btn {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--text-dim);
+  transition: all .12s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.btn:hover { background: var(--node-bg); color: var(--text); border-color: var(--line-strong); }
+.btn-primary {
+  background: var(--accent);
+  color: #0a0c10;
+  border-color: var(--accent);
+}
+.btn-primary:hover { background: #94e0b3; border-color: #94e0b3; color: #0a0c10; }
+.btn-icon { padding: 6px; }
+.btn svg { width: 13px; height: 13px; }
+
+.url-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-mute);
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: rgba(0,0,0,.2);
+  cursor: pointer;
+  user-select: none;
+  transition: all .12s;
+}
+.url-status:hover { color: var(--text-dim); border-color: var(--line-strong); }
+.url-status.active { color: var(--accent); border-color: rgba(125,211,160,.3); background: rgba(125,211,160,.05); }
+.url-status.active .url-status-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.url-status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--text-mute);
+  transition: all .15s;
+}
+.url-status.saving .url-status-dot { background: var(--warn); animation: pulse-dot .8s ease infinite; }
+@keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.url-status-text { letter-spacing: 0.04em; }
+
+/* ===== Sidebar ===== */
+.sidebar {
+  grid-area: sidebar;
+  background: var(--bg-elev);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  padding: 16px 12px;
+}
+.sidebar-section {
+  margin-bottom: 24px;
+}
+.sidebar-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-mute);
+  padding: 0 4px 8px;
+}
+.node-template {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  cursor: grab;
+  font-size: 12px;
+  color: var(--text-dim);
+  transition: all .12s;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.015);
+  position: relative;
+}
+.node-template::before {
+  content: '⋮⋮';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-mute);
+  font-size: 10px;
+  letter-spacing: -2px;
+  opacity: 0.4;
+  font-family: var(--font-mono);
+}
+.node-template:hover {
+  background: rgba(125,211,160,.04);
+  color: var(--text);
+  border-color: var(--accent-dim);
+  transform: translateX(2px);
+}
+.node-template:hover::before { opacity: 0.8; color: var(--accent); }
+.node-template:active { cursor: grabbing; }
+.node-template-icon {
+  width: 28px; height: 28px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.node-template[data-type="screen"] .node-template-icon { background: rgba(125,211,160,.15); color: var(--accent); }
+.node-template[data-type="action"] .node-template-icon { background: rgba(232,168,87,.15); color: var(--warn); }
+.node-template[data-type="decision"] .node-template-icon { background: rgba(120,160,230,.15); color: #78a0e6; }
+.node-template[data-type="exit"] .node-template-icon { background: rgba(232,113,113,.15); color: var(--bad); }
+
+.help-block {
+  font-size: 11px;
+  color: var(--text-mute);
+  line-height: 1.6;
+  padding: 10px;
+  border-radius: 4px;
+  background: rgba(255,255,255,.02);
+  border: 1px dashed var(--line);
+}
+.help-block kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 4px;
+  background: var(--node-bg);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--text-dim);
+}
+
+/* ===== Canvas ===== */
+.canvas-wrap {
+  grid-area: canvas;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-canvas);
+  cursor: grab;
+}
+.canvas-wrap.panning { cursor: grabbing; }
+.canvas-wrap.connecting { cursor: crosshair; }
+
+.canvas-empty-hint {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 4;
+  display: none;
+}
+.canvas-empty-hint.show { display: block; }
+.canvas-empty-hint-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-mute);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.canvas-empty-hint-arrow {
+  font-size: 24px;
+  color: var(--accent);
+  margin-bottom: 8px;
+  animation: pulse-left 1.6s ease-in-out infinite;
+}
+@keyframes pulse-left {
+  0%, 100% { transform: translateX(0); opacity: 0.6; }
+  50% { transform: translateX(-8px); opacity: 1; }
+}
+.canvas-empty-hint-text {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  max-width: 320px;
+}
+.canvas-empty-hint-text strong { color: var(--text); font-weight: 500; }
+.canvas-empty-hint-text kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  background: var(--node-bg);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--text);
+}
+.canvas-empty-hint-divider {
+  margin: 14px 0;
+  font-size: 10px;
+  color: var(--text-mute);
+  font-family: var(--font-mono);
+}
+
+.canvas-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+.canvas-bg-strong {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--grid-strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-strong) 1px, transparent 1px);
+  background-size: 120px 120px;
+  pointer-events: none;
+}
+
+.canvas-inner {
+  position: absolute;
+  top: 0; left: 0;
+  width: 0; height: 0;
+  transform-origin: 0 0;
+}
+
+.edges-svg {
+  position: absolute;
+  top: -10000px; left: -10000px;
+  width: 20000px; height: 20000px;
+  pointer-events: none;
+  overflow: visible;
+}
+.edges-svg .edge-path {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+  pointer-events: stroke;
+  cursor: pointer;
+  transition: stroke .15s;
+}
+.edges-svg .edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.edges-svg .edge-group:hover .edge-path { stroke: var(--accent); }
+.edges-svg .edge-group.selected .edge-path { stroke: var(--accent); stroke-width: 2; }
+.edges-svg .edge-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--text-dim);
+  pointer-events: none;
+}
+.edges-svg .edge-label-bg {
+  fill: var(--bg-canvas);
+  stroke: var(--line);
+  stroke-width: 1;
+  pointer-events: none;
+}
+.edges-svg .edge-group:hover .edge-label { fill: var(--accent); }
+.edges-svg .edge-group:hover .edge-label-bg { stroke: var(--accent); }
+
+.edge-preview {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  pointer-events: none;
+}
+
+/* ===== Node ===== */
+.node {
+  position: absolute;
+  background: var(--node-bg);
+  border: 1px solid var(--node-border);
+  border-radius: 6px;
+  width: 220px;
+  cursor: grab;
+  transition: border-color .12s, box-shadow .12s, transform .04s;
+  user-select: none;
+  box-shadow: var(--shadow);
+}
+.node:hover {
+  border-color: var(--line-strong);
+  background: var(--node-bg-hover);
+}
+.node.dragging { cursor: grabbing; box-shadow: var(--shadow-lg); z-index: 100; }
+.node.selected {
+  border-color: var(--node-border-active);
+  box-shadow: var(--shadow-lg), 0 0 0 1px var(--node-border-active);
+}
+
+.node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.node-type-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 5px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.node[data-type="screen"] .node-type-badge { background: rgba(125,211,160,.15); color: var(--accent); }
+.node[data-type="action"] .node-type-badge { background: rgba(232,168,87,.15); color: var(--warn); }
+.node[data-type="decision"] .node-type-badge { background: rgba(120,160,230,.15); color: #78a0e6; }
+.node[data-type="exit"] .node-type-badge { background: rgba(232,113,113,.15); color: var(--bad); }
+
+.node-id {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-mute);
+  margin-left: auto;
+}
+
+.node-body { padding: 8px 10px 10px; }
+.node-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.3;
+  word-break: keep-all;
+}
+.node-desc {
+  font-size: 11px;
+  color: var(--text-mute);
+  line-height: 1.5;
+  word-break: keep-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.node-metric {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255,255,255,.06);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.node-metric-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-mute);
+}
+.node-metric-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.node-metric-value.low { color: var(--warn); }
+.node-metric-value.bad { color: var(--bad); }
+
+/* Connection ports */
+.node-port {
+  position: absolute;
+  width: 14px; height: 14px;
+  background: var(--node-bg);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: all .12s;
+  cursor: crosshair;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.node:hover .node-port {
+  border-color: var(--accent-dim);
+  background: rgba(125,211,160,.1);
+}
+.node:hover .node-port.output {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+.node-port.output::after {
+  content: '';
+  width: 0; height: 0;
+  border-left: 4px solid var(--text-mute);
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+  margin-left: 1px;
+  transition: border-color .12s;
+}
+.node:hover .node-port.output::after { border-left-color: #0a0c10; }
+.node-port:hover, .node-port.active {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 4px rgba(125,211,160,.2);
+  transform: translateY(-50%) scale(1.2);
+}
+.node-port:hover::after, .node-port.active::after { border-left-color: #0a0c10 !important; }
+.node-port.input { left: -7px; }
+.node-port.output { right: -7px; }
+
+/* Hint tooltip on first hover - shows on the node itself */
+.node-port-hint {
+  position: absolute;
+  right: -8px;
+  top: -28px;
+  background: var(--accent);
+  color: #0a0c10;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.node:hover .node-port-hint { opacity: 1; }
+.node.dragging .node-port-hint, .node.selected .node-port-hint { opacity: 0; }
+
+/* ===== Inspector ===== */
+.inspector {
+  grid-area: inspector;
+  background: var(--bg-elev);
+  border-left: 1px solid var(--line);
+  overflow-y: auto;
+  padding: 16px;
+}
+.inspector-empty {
+  color: var(--text-mute);
+  font-size: 12px;
+  text-align: center;
+  padding: 40px 20px;
+  line-height: 1.7;
+}
+.inspector-empty-icon {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  color: var(--line-strong);
+  margin-bottom: 12px;
+}
+
+.inspector-section {
+  margin-bottom: 20px;
+}
+.inspector-section-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-mute);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.field {
+  margin-bottom: 10px;
+}
+.field-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.field-input, .field-textarea, .field-select {
+  width: 100%;
+  background: var(--bg-canvas);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 7px 9px;
+  font-size: 12px;
+  color: var(--text);
+  transition: border-color .12s;
+  outline: none;
+  font-family: inherit;
+}
+.field-input:focus, .field-textarea:focus, .field-select:focus {
+  border-color: var(--accent-dim);
+}
+.field-textarea {
+  resize: vertical;
+  min-height: 60px;
+  line-height: 1.5;
+}
+.field-input.mono { font-family: var(--font-mono); font-size: 11px; }
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.field-help {
+  font-size: 10px;
+  color: var(--text-mute);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.field-image-preview {
+  margin-top: 6px;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  padding: 4px;
+  background: var(--bg-canvas);
+  text-align: center;
+}
+.field-image-preview img {
+  max-width: 100%;
+  max-height: 120px;
+  border-radius: 2px;
+}
+
+.btn-danger {
+  color: var(--bad);
+  border-color: rgba(232,113,113,.3);
+}
+.btn-danger:hover {
+  background: rgba(232,113,113,.1);
+  color: var(--bad);
+  border-color: var(--bad);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stat-card {
+  background: var(--bg-canvas);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 10px;
+}
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-mute);
+  margin-bottom: 4px;
+}
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ===== Mini-map ===== */
+.minimap {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 180px;
+  height: 120px;
+  background: rgba(10,12,16,.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  z-index: 5;
+  overflow: hidden;
+}
+.minimap-viewport {
+  position: absolute;
+  border: 1px solid var(--accent);
+  background: rgba(125,211,160,.05);
+  pointer-events: none;
+}
+.minimap-node {
+  position: absolute;
+  background: var(--text-mute);
+  border-radius: 1px;
+}
+
+/* ===== Zoom controls ===== */
+.zoom-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(21,24,31,.9);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  z-index: 5;
+}
+.zoom-btn {
+  padding: 8px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  border-bottom: 1px solid var(--line);
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.zoom-btn:last-child { border-bottom: none; }
+.zoom-btn:hover { background: rgba(255,255,255,.04); color: var(--text); }
+.zoom-level {
+  padding: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-mute);
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ===== Toast ===== */
+.toast {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-12px);
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-size: 12px;
+  color: var(--text);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: all .25s ease;
+  box-shadow: var(--shadow);
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ===== Context Menu ===== */
+.context-menu {
+  position: fixed;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px;
+  z-index: 1000;
+  box-shadow: var(--shadow-lg);
+  min-width: 160px;
+  display: none;
+}
+.context-menu.show { display: block; }
+.context-menu-item {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.context-menu-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
+.context-menu-item.danger:hover { color: var(--bad); background: rgba(232,113,113,.08); }
+.context-menu-divider { height: 1px; background: var(--line); margin: 4px 0; }
+.context-menu-item kbd {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-mute);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--line-strong); }
+
+/* Drag preview */
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.7;
+}
+
+/* ===== Modal ===== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in .18s ease;
+}
+.modal-backdrop.show { display: flex; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  width: 540px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: auto;
+  box-shadow: var(--shadow-lg);
+}
+.modal-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-title-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+  background: rgba(125,211,160,.1);
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+.modal-close {
+  font-size: 18px;
+  color: var(--text-mute);
+  line-height: 1;
+  padding: 4px;
+  border-radius: 3px;
+}
+.modal-close:hover { background: rgba(255,255,255,.05); color: var(--text); }
+.modal-body { padding: 16px 18px; }
+.modal-footer {
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.url-display {
+  background: var(--bg-canvas);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  word-break: break-all;
+  max-height: 120px;
+  overflow-y: auto;
+  line-height: 1.5;
+  user-select: all;
+}
+
+.size-info {
+  margin-top: 12px;
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+}
+.size-info-item {
+  flex: 1;
+  background: var(--bg-canvas);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+.size-info-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-mute);
+  margin-bottom: 2px;
+}
+.size-info-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.size-info-value.warn { color: var(--warn); }
+.size-info-value.bad { color: var(--bad); }
+
+.warning-block {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: rgba(232,168,87,.06);
+  border: 1px solid rgba(232,168,87,.2);
+  font-size: 11px;
+  color: var(--warn);
+  line-height: 1.5;
+}
+.warning-block.bad {
+  background: rgba(232,113,113,.06);
+  border-color: rgba(232,113,113,.2);
+  color: var(--bad);
+}
+
+.share-options {
+  margin-top: 14px;
+}
+.share-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+.share-option input[type=checkbox] {
+  margin-top: 2px;
+  cursor: pointer;
+}
+.share-option-text {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.share-option-text strong { color: var(--text); }
+.share-option-text small { display: block; color: var(--text-mute); font-size: 10px; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <span class="brand-name">FUNNEL</span>
+      <span class="brand-sub">/ builder</span>
+    </div>
+
+    <div class="funnel-tabs" id="funnel-tabs"></div>
+
+    <div class="header-actions">
+      <div class="url-status" id="url-status" title="URL 자동 동기화 상태">
+        <span class="url-status-dot"></span>
+        <span class="url-status-text">URL 동기화</span>
+      </div>
+      <button class="btn btn-primary" id="btn-share" title="현재 퍼널을 공유 가능한 URL로 복사">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 8a3 3 0 100-2 3 3 0 000 2zM11 5a3 3 0 100-2 3 3 0 000 2zM11 13a3 3 0 100-2 3 3 0 000 2zM7.5 7l3-2M7.5 9l3 2"/></svg>
+        공유 URL 복사
+      </button>
+      <button class="btn" id="btn-new-funnel" title="새 퍼널">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>
+        새 퍼널
+      </button>
+      <button class="btn" id="btn-export" title="JSON 파일로 내보내기 (백업/대용량 공유용)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v9M5 8l3 3 3-3M3 14h10"/></svg>
+        Export
+      </button>
+      <button class="btn" id="btn-import" title="JSON 불러오기">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 11V2M5 6l3-3 3 3M3 14h10"/></svg>
+        Import
+      </button>
+      <input type="file" id="import-file" accept=".json" style="display:none">
+    </div>
+  </header>
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">노드 팔레트</div>
+
+      <div class="node-template" draggable="true" data-type="screen">
+        <div class="node-template-icon">SC</div>
+        <div>
+          <div style="font-weight:500;color:var(--text);">화면 (Screen)</div>
+          <div style="font-size:10px;color:var(--text-mute);">페이지·화면 단위</div>
+        </div>
+      </div>
+
+      <div class="node-template" draggable="true" data-type="action">
+        <div class="node-template-icon">AC</div>
+        <div>
+          <div style="font-weight:500;color:var(--text);">액션 (Action)</div>
+          <div style="font-size:10px;color:var(--text-mute);">사용자 행동·이벤트</div>
+        </div>
+      </div>
+
+      <div class="node-template" draggable="true" data-type="decision">
+        <div class="node-template-icon">DE</div>
+        <div>
+          <div style="font-weight:500;color:var(--text);">분기 (Decision)</div>
+          <div style="font-size:10px;color:var(--text-mute);">조건·분기점</div>
+        </div>
+      </div>
+
+      <div class="node-template" draggable="true" data-type="exit">
+        <div class="node-template-icon">EX</div>
+        <div>
+          <div style="font-weight:500;color:var(--text);">완료/이탈 (Exit)</div>
+          <div style="font-size:10px;color:var(--text-mute);">최종 상태</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">사용법</div>
+      <div class="help-block">
+        <strong style="color:var(--accent);">노드 추가</strong><br>
+        · 팔레트 항목을 캔버스로 <strong style="color:var(--text-dim);">드래그</strong> 또는 <strong style="color:var(--text-dim);">더블클릭</strong><br>
+        · 캔버스 빈 곳 <kbd>우클릭</kbd> → 메뉴<br><br>
+        <strong style="color:var(--accent);">노드 연결 (3가지 방법)</strong><br>
+        · 노드 호버 시 보이는 <strong style="color:var(--text-dim);">초록 점</strong>을 다른 노드로 드래그<br>
+        · <kbd>Alt</kbd> 또는 <kbd>Shift</kbd> 누르고 노드를 드래그<br>
+        · 노드 <kbd>우클릭</kbd> → "여기서 연결 시작"<br><br>
+        <strong style="color:var(--accent);">기타</strong><br>
+        · 빈 곳 드래그 = 팬 / <kbd>휠</kbd> = 줌<br>
+        · <kbd>F</kbd> 전체보기 / <kbd>Ctrl</kbd>+<kbd>D</kbd> 복제 / <kbd>Del</kbd> 삭제<br><br>
+        <strong style="color:var(--accent);">팀과 공유</strong><br>
+        · 우상단 <strong style="color:var(--text-dim);">공유 URL 복사</strong> → 슬랙·메일 붙여넣기<br>
+        · 받는 사람이 링크 열면 동일 화면<br>
+        · <strong style="color:var(--text-dim);">URL 동기화</strong> 켜면 편집 시 자동 갱신
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">현재 퍼널</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Nodes</div>
+          <div class="stat-value" id="stat-nodes">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Edges</div>
+          <div class="stat-value" id="stat-edges">0</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== CANVAS ===== -->
+  <main class="canvas-wrap" id="canvas-wrap">
+    <div class="canvas-bg-strong"></div>
+    <div class="canvas-bg"></div>
+    <div class="canvas-inner" id="canvas-inner">
+      <svg class="edges-svg" id="edges-svg"></svg>
+      <div id="nodes-container"></div>
+    </div>
+
+    <div class="canvas-empty-hint" id="canvas-empty-hint">
+      <div class="canvas-empty-hint-arrow">←</div>
+      <div class="canvas-empty-hint-title">EMPTY CANVAS</div>
+      <div class="canvas-empty-hint-text">
+        왼쪽 <strong>노드 팔레트</strong>에서 원하는 노드를<br>
+        이 영역으로 <strong>드래그</strong>하거나 <strong>더블클릭</strong>하세요
+        <div class="canvas-empty-hint-divider">— OR —</div>
+        빈 공간에서 <kbd>우클릭</kbd> → 노드 추가
+      </div>
+    </div>
+
+    <div class="zoom-controls">
+      <button class="zoom-btn" id="zoom-in">+</button>
+      <div class="zoom-level" id="zoom-level">100%</div>
+      <button class="zoom-btn" id="zoom-out">−</button>
+      <button class="zoom-btn" id="zoom-fit" title="전체보기 (F)">⊡</button>
+    </div>
+
+    <div class="minimap" id="minimap">
+      <div class="minimap-viewport" id="minimap-viewport"></div>
+    </div>
+  </main>
+
+  <!-- ===== INSPECTOR ===== -->
+  <aside class="inspector" id="inspector">
+    <div class="inspector-empty">
+      <div class="inspector-empty-icon">⌘</div>
+      노드 또는 연결선을<br>선택해 편집하세요
+    </div>
+  </aside>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="context-menu" id="context-menu"></div>
+
+<!-- Share Modal -->
+<div class="modal-backdrop" id="share-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        공유 URL
+        <span class="modal-title-badge">URL HASH</span>
+      </div>
+      <button class="modal-close" id="share-modal-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">
+        아래 URL을 복사해 슬랙·메일·노션 등에 붙여넣으세요. 받는 사람이 링크를 열면 <strong style="color:var(--text);">동일한 퍼널 화면</strong>이 나타납니다. 데이터는 URL 자체에 압축되어 들어있어 서버 없이 동작합니다.
+      </div>
+      <div class="url-display" id="share-url-display"></div>
+
+      <div class="size-info">
+        <div class="size-info-item">
+          <div class="size-info-label">Funnels</div>
+          <div class="size-info-value" id="share-size-funnels">—</div>
+        </div>
+        <div class="size-info-item">
+          <div class="size-info-label">URL Length</div>
+          <div class="size-info-value" id="share-size-url">—</div>
+        </div>
+        <div class="size-info-item">
+          <div class="size-info-label">Compression</div>
+          <div class="size-info-value" id="share-size-ratio">—</div>
+        </div>
+      </div>
+
+      <div id="share-warning"></div>
+
+      <div class="share-options">
+        <label class="share-option">
+          <input type="checkbox" id="share-auto-sync">
+          <div class="share-option-text">
+            <strong>편집할 때마다 URL 자동 업데이트</strong>
+            <small>주소창 URL이 실시간으로 갱신됩니다. 새로고침해도 작업이 유지됩니다.</small>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="share-modal-cancel">닫기</button>
+      <button class="btn btn-primary" id="share-modal-copy">URL 복사</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================
+// LZ-String (inlined, by pieroxy/lz-string v1.5.0, MIT/WTFPL)
+// Used for URL hash compression. Full library: ~10KB.
+// ============================================================
+var LZString = (function() {
+  var f = String.fromCharCode;
+  var keyStrUriSafe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$";
+  var baseReverseDic = {};
+  function getBaseValue(alphabet, character) {
+    if (!baseReverseDic[alphabet]) {
+      baseReverseDic[alphabet] = {};
+      for (var i = 0; i < alphabet.length; i++) baseReverseDic[alphabet][alphabet.charAt(i)] = i;
+    }
+    return baseReverseDic[alphabet][character];
+  }
+  var LZString = {
+    compressToEncodedURIComponent: function(input) {
+      if (input == null) return "";
+      return LZString._compress(input, 6, function(a) { return keyStrUriSafe.charAt(a); });
+    },
+    decompressFromEncodedURIComponent: function(input) {
+      if (input == null) return "";
+      if (input == "") return null;
+      input = input.replace(/ /g, "+");
+      return LZString._decompress(input.length, 32, function(index) { return getBaseValue(keyStrUriSafe, input.charAt(index)); });
+    },
+    _compress: function(uncompressed, bitsPerChar, getCharFromInt) {
+      if (uncompressed == null) return "";
+      var i, value,
+        context_dictionary = {},
+        context_dictionaryToCreate = {},
+        context_c = "", context_wc = "", context_w = "",
+        context_enlargeIn = 2, context_dictSize = 3, context_numBits = 2,
+        context_data = [], context_data_val = 0, context_data_position = 0, ii;
+      for (ii = 0; ii < uncompressed.length; ii += 1) {
+        context_c = uncompressed.charAt(ii);
+        if (!Object.prototype.hasOwnProperty.call(context_dictionary, context_c)) {
+          context_dictionary[context_c] = context_dictSize++;
+          context_dictionaryToCreate[context_c] = true;
+        }
+        context_wc = context_w + context_c;
+        if (Object.prototype.hasOwnProperty.call(context_dictionary, context_wc)) context_w = context_wc;
+        else {
+          if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
+            if (context_w.charCodeAt(0) < 256) {
+              for (i = 0; i < context_numBits; i++) {
+                context_data_val = (context_data_val << 1);
+                if (context_data_position == bitsPerChar - 1) { context_data_position = 0; context_data.push(getCharFromInt(context_data_val)); context_data_val = 0; }
+                else context_data_position++;
+              }
+              value = context_w.charCodeAt(0);
+              for (i = 0; i < 8; i++) {
+                context_data_val = (context_data_val << 1) | (value & 1);
+                if (context_data_position == bitsPerChar - 1) { context_data_position = 0; context_data.push(getCharFromInt(context_data_val)); context_data_val = 0; }
+                else context_data_position++;
+                value = value >> 1;
+              }
+            } else {
+              value = 1;
+              for (i = 0; i < context_numBits; i++) {
+                context_data_val = (context_data_val << 1) | value;
+                if (context_data_position == bitsPerChar - 1) { context_data_position = 0; context_data.push(getCharFromInt(context_data_val)); context_data_val = 0; }
+                else context_data_position++;
+                value = 0;
+              }
+              value = context_w.charCodeAt(0);
+              for (i = 0; i < 16; i++) {
+                context_data_val = (context_data_val << 1) | (value & 1);
+                if (context_data_position == bitsPerChar - 1) { context_data_position = 0; context_data.push(getCharFromInt(context_data_val)); context_data_val = 0; }
+                else context_data_position++;
+                value = value >> 1;
+              }
+            }
+            context_enlargeIn--;
+            if (context_enlargeIn == 0) { context_enlargeIn = Math.pow(2, context_numBits); context_numBits++; }
+            delete context_dictionaryToCreate[context_w];
+          } else {
+            value = context_dictionary[context_w];
+            for (i = 0; i < context_numBits; i++) {
+              context_data_val = (context_data_val << 1) | (value & 1);
+              if (context_data_position == bitsPerChar - 1) { context_data_position = 0; context_data.push(getCharFromInt(context_data_val)); context_data_val = 0; }
+              else context_data_position++;
+              value = value >> 1;
+            }
+          }
+          context_enlargeIn--;
+          if (context_enlargeIn == 0) { context_enlargeIn = Math.pow(2, context_numBits); context_numBits++; }
+          context_dictionary[context_wc] = context_dictSize++;
+          context_w = String(context_c);
+        }
+      }
+      if (context_w !== "") {
+        if (Object.prototype.hasOwnProperty.call(context_dictionaryToCreate, context_w)) {
+          if (context_w.charCodeAt(0) < 256) {
+            for (i = 0; i < context_numBits; i++) {
+              context_data_val = (context_data_val << 1);
+              if (context_data_position == bitsPerChar - 1) { context_data_position = 0; context_data.push(getCharFromInt(context_data_val)); context_data_val = 0; }
+              else context_data_position++;
+            }
+            value = context_w.charCodeAt(0);
+            for (i = 0; i < 8; i++) {
+              context_data_val = (context_data_val << 1) | (value & 1);
+              if (context_data_position == bitsPerChar - 1) { context_data_position = 0; context_data.push(getCharFromInt(context_data_val)); context_data_val = 0; }
+              else context_data_position++;
+              value = value >> 1;
+            }
+          } else {
+            value = 1;
+            for (i = 0; i < context_numBits; i++) {
+              context_data_val = (context_data_val << 1) | value;
+              if (context_data_position == bitsPerChar - 1) { context_data_position = 0; context_data.push(getCharFromInt(context_data_val)); context_data_val = 0; }
+              else context_data_position++;
+              value = 0;
+            }
+            value = context_w.charCodeAt(0);
+            for (i = 0; i < 16; i++) {
+              context_data_val = (context_data_val << 1) | (value & 1);
+              if (context_data_position == bitsPerChar - 1) { context_data_position = 0; context_data.push(getCharFromInt(context_data_val)); context_data_val = 0; }
+              else context_data_position++;
+              value = value >> 1;
+            }
+          }
+          context_enlargeIn--;
+          if (context_enlargeIn == 0) { context_enlargeIn = Math.pow(2, context_numBits); context_numBits++; }
+          delete context_dictionaryToCreate[context_w];
+        } else {
+          value = context_dictionary[context_w];
+          for (i = 0; i < context_numBits; i++) {
+            context_data_val = (context_data_val << 1) | (value & 1);
+            if (context_data_position == bitsPerChar - 1) { context_data_position = 0; context_data.push(getCharFromInt(context_data_val)); context_data_val = 0; }
+            else context_data_position++;
+            value = value >> 1;
+          }
+        }
+        context_enlargeIn--;
+        if (context_enlargeIn == 0) { context_enlargeIn = Math.pow(2, context_numBits); context_numBits++; }
+      }
+      value = 2;
+      for (i = 0; i < context_numBits; i++) {
+        context_data_val = (context_data_val << 1) | (value & 1);
+        if (context_data_position == bitsPerChar - 1) { context_data_position = 0; context_data.push(getCharFromInt(context_data_val)); context_data_val = 0; }
+        else context_data_position++;
+        value = value >> 1;
+      }
+      while (true) {
+        context_data_val = (context_data_val << 1);
+        if (context_data_position == bitsPerChar - 1) { context_data.push(getCharFromInt(context_data_val)); break; }
+        else context_data_position++;
+      }
+      return context_data.join('');
+    },
+    _decompress: function(length, resetValue, getNextValue) {
+      var dictionary = [], enlargeIn = 4, dictSize = 4, numBits = 3, entry = "", result = [],
+        i, w, bits, resb, maxpower, power, c,
+        data = { val: getNextValue(0), position: resetValue, index: 1 };
+      for (i = 0; i < 3; i += 1) dictionary[i] = i;
+      bits = 0; maxpower = Math.pow(2, 2); power = 1;
+      while (power != maxpower) {
+        resb = data.val & data.position;
+        data.position >>= 1;
+        if (data.position == 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+        bits |= (resb > 0 ? 1 : 0) * power;
+        power <<= 1;
+      }
+      switch (bits) {
+        case 0:
+          bits = 0; maxpower = Math.pow(2, 8); power = 1;
+          while (power != maxpower) {
+            resb = data.val & data.position;
+            data.position >>= 1;
+            if (data.position == 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+            bits |= (resb > 0 ? 1 : 0) * power;
+            power <<= 1;
+          }
+          c = f(bits); break;
+        case 1:
+          bits = 0; maxpower = Math.pow(2, 16); power = 1;
+          while (power != maxpower) {
+            resb = data.val & data.position;
+            data.position >>= 1;
+            if (data.position == 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+            bits |= (resb > 0 ? 1 : 0) * power;
+            power <<= 1;
+          }
+          c = f(bits); break;
+        case 2: return "";
+      }
+      dictionary[3] = c; w = c; result.push(c);
+      while (true) {
+        if (data.index > length) return "";
+        bits = 0; maxpower = Math.pow(2, numBits); power = 1;
+        while (power != maxpower) {
+          resb = data.val & data.position;
+          data.position >>= 1;
+          if (data.position == 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+          bits |= (resb > 0 ? 1 : 0) * power;
+          power <<= 1;
+        }
+        switch (c = bits) {
+          case 0:
+            bits = 0; maxpower = Math.pow(2, 8); power = 1;
+            while (power != maxpower) {
+              resb = data.val & data.position;
+              data.position >>= 1;
+              if (data.position == 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+              bits |= (resb > 0 ? 1 : 0) * power;
+              power <<= 1;
+            }
+            dictionary[dictSize++] = f(bits); c = dictSize - 1; enlargeIn--; break;
+          case 1:
+            bits = 0; maxpower = Math.pow(2, 16); power = 1;
+            while (power != maxpower) {
+              resb = data.val & data.position;
+              data.position >>= 1;
+              if (data.position == 0) { data.position = resetValue; data.val = getNextValue(data.index++); }
+              bits |= (resb > 0 ? 1 : 0) * power;
+              power <<= 1;
+            }
+            dictionary[dictSize++] = f(bits); c = dictSize - 1; enlargeIn--; break;
+          case 2: return result.join('');
+        }
+        if (enlargeIn == 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+        if (dictionary[c]) entry = dictionary[c];
+        else {
+          if (c === dictSize) entry = w + w.charAt(0);
+          else return null;
+        }
+        result.push(entry);
+        dictionary[dictSize++] = w + entry.charAt(0);
+        enlargeIn--;
+        w = entry;
+        if (enlargeIn == 0) { enlargeIn = Math.pow(2, numBits); numBits++; }
+      }
+    }
+  };
+  return LZString;
+})();
+
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+  funnels: [],
+  activeFunnelId: null,
+  selectedNodeId: null,
+  selectedEdgeId: null,
+  pan: { x: 0, y: 0 },
+  zoom: 1,
+  autoSyncURL: false,
+  loadedFromURL: false,  // becomes true when initial load came from URL hash
+};
+
+const URL_HASH_PREFIX = '#f=';
+const URL_SAFE_LIMIT = 8000;   // Practical limit for clean URL sharing
+const URL_HARD_LIMIT = 14000;  // Beyond this, URLs may break in some clients
+
+const NODE_TYPES = {
+  screen:   { label: '화면',     short: 'SC', defaultTitle: '새 화면' },
+  action:   { label: '액션',     short: 'AC', defaultTitle: '새 액션' },
+  decision: { label: '분기',     short: 'DE', defaultTitle: '새 분기' },
+  exit:     { label: '완료/이탈', short: 'EX', defaultTitle: '완료' },
+};
+
+const NODE_W = 220;
+// Node height varies; we'll measure on the fly. Use estimated for layout-only ops.
+const NODE_H_EST = 100;
+
+// ============================================================
+// UTILS
+// ============================================================
+const uid = (prefix='id') => prefix + '_' + Math.random().toString(36).slice(2, 9);
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function getActiveFunnel() {
+  return state.funnels.find(f => f.id === state.activeFunnelId);
+}
+
+function getNode(nodeId) {
+  const f = getActiveFunnel();
+  return f?.nodes.find(n => n.id === nodeId);
+}
+
+function getEdge(edgeId) {
+  const f = getActiveFunnel();
+  return f?.edges.find(e => e.id === edgeId);
+}
+
+// Convert client (screen) coords to canvas (world) coords
+function clientToCanvas(clientX, clientY) {
+  const rect = document.getElementById('canvas-wrap').getBoundingClientRect();
+  return {
+    x: (clientX - rect.left - state.pan.x) / state.zoom,
+    y: (clientY - rect.top - state.pan.y) / state.zoom,
+  };
+}
+
+// ============================================================
+// FUNNEL MANAGEMENT
+// ============================================================
+function createFunnel(name) {
+  const funnel = {
+    id: uid('fn'),
+    name: name || `퍼널 ${state.funnels.length + 1}`,
+    nodes: [],
+    edges: [],
+    pan: { x: 100, y: 100 },
+    zoom: 1,
+  };
+  state.funnels.push(funnel);
+  state.activeFunnelId = funnel.id;
+  state.pan = { ...funnel.pan };
+  state.zoom = funnel.zoom;
+  state.selectedNodeId = null;
+  state.selectedEdgeId = null;
+  renderAll();
+  return funnel;
+}
+
+function switchFunnel(funnelId) {
+  // Save current pan/zoom
+  const current = getActiveFunnel();
+  if (current) {
+    current.pan = { ...state.pan };
+    current.zoom = state.zoom;
+  }
+  state.activeFunnelId = funnelId;
+  const f = getActiveFunnel();
+  state.pan = { ...f.pan };
+  state.zoom = f.zoom;
+  state.selectedNodeId = null;
+  state.selectedEdgeId = null;
+  renderAll();
+}
+
+function deleteFunnel(funnelId) {
+  if (state.funnels.length === 1) {
+    showToast('최소 1개의 퍼널이 필요합니다');
+    return;
+  }
+  const idx = state.funnels.findIndex(f => f.id === funnelId);
+  state.funnels.splice(idx, 1);
+  if (state.activeFunnelId === funnelId) {
+    state.activeFunnelId = state.funnels[0].id;
+    const f = getActiveFunnel();
+    state.pan = { ...f.pan };
+    state.zoom = f.zoom;
+    state.selectedNodeId = null;
+    state.selectedEdgeId = null;
+  }
+  renderAll();
+}
+
+function renameFunnel(funnelId, newName) {
+  const f = state.funnels.find(x => x.id === funnelId);
+  if (f) f.name = newName;
+  renderTabs();
+}
+
+// ============================================================
+// NODES & EDGES
+// ============================================================
+function addNode(type, x, y, partial={}) {
+  const f = getActiveFunnel();
+  if (!f) return;
+  const node = {
+    id: uid('n'),
+    type,
+    x, y,
+    title: partial.title || NODE_TYPES[type].defaultTitle,
+    screenId: partial.screenId || '',
+    description: partial.description || '',
+    image: partial.image || '',
+    visitors: partial.visitors ?? null,  // For source/origin nodes - manual entry
+  };
+  f.nodes.push(node);
+  selectNode(node.id);
+  renderAll();
+  return node;
+}
+
+function deleteNode(nodeId) {
+  const f = getActiveFunnel();
+  if (!f) return;
+  f.nodes = f.nodes.filter(n => n.id !== nodeId);
+  f.edges = f.edges.filter(e => e.from !== nodeId && e.to !== nodeId);
+  if (state.selectedNodeId === nodeId) state.selectedNodeId = null;
+  renderAll();
+}
+
+function duplicateNode(nodeId) {
+  const node = getNode(nodeId);
+  if (!node) return;
+  addNode(node.type, node.x + 40, node.y + 40, {
+    title: node.title + ' (복사)',
+    screenId: node.screenId,
+    description: node.description,
+    image: node.image,
+  });
+}
+
+function addEdge(fromId, toId) {
+  if (fromId === toId) return null;
+  const f = getActiveFunnel();
+  if (!f) return null;
+  // Prevent duplicate edge
+  if (f.edges.some(e => e.from === fromId && e.to === toId)) {
+    showToast('이미 연결되어 있습니다');
+    return null;
+  }
+  const edge = {
+    id: uid('e'),
+    from: fromId,
+    to: toId,
+    label: '',
+    visitors: null,  // count entering this edge (= visitors arriving at "to" via this edge)
+  };
+  f.edges.push(edge);
+  renderAll();
+  return edge;
+}
+
+function deleteEdge(edgeId) {
+  const f = getActiveFunnel();
+  if (!f) return;
+  f.edges = f.edges.filter(e => e.id !== edgeId);
+  if (state.selectedEdgeId === edgeId) state.selectedEdgeId = null;
+  renderAll();
+}
+
+// ============================================================
+// SELECTION
+// ============================================================
+function selectNode(nodeId) {
+  state.selectedNodeId = nodeId;
+  state.selectedEdgeId = null;
+  renderNodes();
+  renderEdges();
+  renderInspector();
+}
+function selectEdge(edgeId) {
+  state.selectedEdgeId = edgeId;
+  state.selectedNodeId = null;
+  renderNodes();
+  renderEdges();
+  renderInspector();
+}
+function clearSelection() {
+  state.selectedNodeId = null;
+  state.selectedEdgeId = null;
+  renderNodes();
+  renderEdges();
+  renderInspector();
+}
+
+// ============================================================
+// CONVERSION CALCULATION
+// ============================================================
+// Visitors at a node = sum of visitors on incoming edges, OR node.visitors if set (origin)
+function getNodeVisitors(nodeId) {
+  const node = getNode(nodeId);
+  if (!node) return null;
+  const f = getActiveFunnel();
+  // If user manually set visitors for this node (origin point), use it
+  if (node.visitors !== null && node.visitors !== undefined && node.visitors !== '') {
+    return Number(node.visitors);
+  }
+  // Otherwise, sum incoming edges' visitors
+  const incoming = f.edges.filter(e => e.to === nodeId);
+  if (incoming.length === 0) return null;
+  let total = 0;
+  let hasAny = false;
+  for (const e of incoming) {
+    if (e.visitors !== null && e.visitors !== undefined && e.visitors !== '') {
+      total += Number(e.visitors);
+      hasAny = true;
+    }
+  }
+  return hasAny ? total : null;
+}
+
+// Conversion rate from "from" node to "to" node via this edge
+function getEdgeConversion(edge) {
+  const fromVisitors = getNodeVisitors(edge.from);
+  if (!fromVisitors || fromVisitors === 0) return null;
+  if (edge.visitors === null || edge.visitors === undefined || edge.visitors === '') return null;
+  return Number(edge.visitors) / fromVisitors;
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+function renderAll() {
+  renderTabs();
+  applyTransform();
+  renderNodes();
+  renderEdges();
+  renderInspector();
+  renderStats();
+  renderMinimap();
+  renderZoomLevel();
+}
+
+function applyTransform() {
+  const inner = document.getElementById('canvas-inner');
+  inner.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
+
+  // Move grid background to feel infinite (parallax with pan)
+  const bg = document.querySelector('.canvas-bg');
+  const bgStrong = document.querySelector('.canvas-bg-strong');
+  const gridSize = 24 * state.zoom;
+  const gridSizeStrong = 120 * state.zoom;
+  bg.style.backgroundPosition = `${state.pan.x % gridSize}px ${state.pan.y % gridSize}px`;
+  bg.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+  bgStrong.style.backgroundPosition = `${state.pan.x % gridSizeStrong}px ${state.pan.y % gridSizeStrong}px`;
+  bgStrong.style.backgroundSize = `${gridSizeStrong}px ${gridSizeStrong}px`;
+}
+
+function renderTabs() {
+  const tabs = document.getElementById('funnel-tabs');
+  tabs.innerHTML = '';
+  state.funnels.forEach(f => {
+    const tab = document.createElement('div');
+    tab.className = 'funnel-tab' + (f.id === state.activeFunnelId ? ' active' : '');
+    tab.dataset.id = f.id;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = f.name;
+    nameSpan.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      const input = document.createElement('input');
+      input.className = 'rename-input';
+      input.value = f.name;
+      nameSpan.replaceWith(input);
+      input.focus();
+      input.select();
+      const commit = () => {
+        const v = input.value.trim() || f.name;
+        renameFunnel(f.id, v);
+      };
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') input.blur();
+        if (ev.key === 'Escape') { input.value = f.name; input.blur(); }
+      });
+    });
+    tab.appendChild(nameSpan);
+
+    const close = document.createElement('span');
+    close.className = 'close-x';
+    close.textContent = '×';
+    close.title = '삭제';
+    close.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm(`"${f.name}" 퍼널을 삭제하시겠습니까?`)) {
+        deleteFunnel(f.id);
+      }
+    });
+    tab.appendChild(close);
+
+    tab.addEventListener('click', () => {
+      if (f.id !== state.activeFunnelId) switchFunnel(f.id);
+    });
+    tabs.appendChild(tab);
+  });
+}
+
+function renderNodes() {
+  const container = document.getElementById('nodes-container');
+  const f = getActiveFunnel();
+  if (!f) { container.innerHTML = ''; return; }
+
+  // Build a map of existing dom nodes for diff
+  const existing = {};
+  container.querySelectorAll('.node').forEach(el => existing[el.dataset.id] = el);
+
+  // Build set of current node ids
+  const current = new Set(f.nodes.map(n => n.id));
+
+  // Remove deleted
+  for (const id in existing) {
+    if (!current.has(id)) existing[id].remove();
+  }
+
+  // Add or update
+  f.nodes.forEach(node => {
+    let el = existing[node.id];
+    const isNew = !el;
+    if (isNew) {
+      el = document.createElement('div');
+      el.className = 'node';
+      el.dataset.id = node.id;
+      container.appendChild(el);
+      attachNodeEventHandlers(el, node.id);
+    }
+    el.dataset.type = node.type;
+    el.style.left = node.x + 'px';
+    el.style.top = node.y + 'px';
+    el.style.width = NODE_W + 'px';
+    el.classList.toggle('selected', state.selectedNodeId === node.id);
+
+    const visitors = getNodeVisitors(node.id);
+    const visitorsDisplay = visitors !== null ? Number(visitors).toLocaleString('ko-KR') : '—';
+
+    el.innerHTML = `
+      <div class="node-port input" data-port="input" title="여기로 다른 노드 연결 받기"></div>
+      <div class="node-header">
+        <span class="node-type-badge">${NODE_TYPES[node.type].short}</span>
+        ${node.screenId ? `<span class="node-id">${escapeHtml(node.screenId)}</span>` : ''}
+      </div>
+      <div class="node-body">
+        <div class="node-title">${escapeHtml(node.title || '제목 없음')}</div>
+        ${node.description ? `<div class="node-desc">${escapeHtml(node.description)}</div>` : ''}
+        <div class="node-metric">
+          <span class="node-metric-label">Visitors</span>
+          <span class="node-metric-value">${visitorsDisplay}</span>
+        </div>
+      </div>
+      <div class="node-port output" data-port="output" title="여기서 드래그해 다른 노드와 연결"></div>
+      <div class="node-port-hint">드래그 →</div>
+    `;
+    // Re-attach port handlers (innerHTML wiped them)
+    attachPortHandlers(el, node.id);
+  });
+}
+
+function attachNodeEventHandlers(el, nodeId) {
+  // Drag node
+  el.addEventListener('pointerdown', (e) => {
+    if (e.target.classList.contains('node-port')) return;
+    if (e.button !== 0) return;
+    e.stopPropagation();
+
+    // Alt/Shift + drag from anywhere on node = start edge (alternative to small ports)
+    if (e.altKey || e.shiftKey) {
+      e.preventDefault();
+      selectNode(nodeId);
+      startEdgeDrag(nodeId, e);
+      return;
+    }
+
+    selectNode(nodeId);
+    const node = getNode(nodeId);
+    if (!node) return;
+    const startX = e.clientX, startY = e.clientY;
+    const startNX = node.x, startNY = node.y;
+    el.classList.add('dragging');
+    el.setPointerCapture(e.pointerId);
+
+    const onMove = (ev) => {
+      const dx = (ev.clientX - startX) / state.zoom;
+      const dy = (ev.clientY - startY) / state.zoom;
+      node.x = startNX + dx;
+      node.y = startNY + dy;
+      el.style.left = node.x + 'px';
+      el.style.top = node.y + 'px';
+      renderEdges();
+      renderMinimap();
+    };
+    const onUp = () => {
+      el.classList.remove('dragging');
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+    };
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
+  });
+
+  // Right-click context menu
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    selectNode(nodeId);
+    showContextMenu(e.clientX, e.clientY, [
+      { label: '여기서 연결 시작', action: () => {
+          // Programmatic edge drag start
+          const fakeEvent = { clientX: e.clientX, clientY: e.clientY };
+          startEdgeDragSimulated(nodeId, fakeEvent);
+        }},
+      { divider: true },
+      { label: '복제', shortcut: '⌘D', action: () => duplicateNode(nodeId) },
+      { divider: true },
+      { label: '삭제', shortcut: 'Del', danger: true, action: () => deleteNode(nodeId) },
+    ]);
+  });
+}
+
+// Helper: start an edge drag triggered from context menu (no initial pointerdown).
+// Listens for the next pointermove to begin the drag.
+function startEdgeDragSimulated(fromId) {
+  showToast('대상 노드를 클릭하세요 (취소: Esc)');
+  const onClick = (e) => {
+    const targetEl = e.target.closest('.node');
+    if (targetEl && targetEl.dataset.id !== fromId) {
+      addEdge(fromId, targetEl.dataset.id);
+    }
+    cleanup();
+  };
+  const onKey = (e) => { if (e.key === 'Escape') cleanup(); };
+  function cleanup() {
+    document.removeEventListener('click', onClick, true);
+    document.removeEventListener('keydown', onKey);
+  }
+  // Defer attaching click to skip the current contextmenu's resulting click
+  setTimeout(() => {
+    document.addEventListener('click', onClick, true);
+    document.addEventListener('keydown', onKey);
+  }, 50);
+}
+
+function attachPortHandlers(nodeEl, nodeId) {
+  const outPort = nodeEl.querySelector('.node-port.output');
+  outPort.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    startEdgeDrag(nodeId, e);
+  });
+}
+
+function startEdgeDrag(fromId, startEvent) {
+  const canvasWrap = document.getElementById('canvas-wrap');
+  canvasWrap.classList.add('connecting');
+  const svg = document.getElementById('edges-svg');
+
+  // Create preview path
+  const preview = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  preview.setAttribute('class', 'edge-preview');
+  svg.appendChild(preview);
+
+  const fromNode = getNode(fromId);
+  const fromPoint = getOutputPoint(fromNode);
+
+  let hoverNodeId = null;
+
+  const onMove = (e) => {
+    const c = clientToCanvas(e.clientX, e.clientY);
+    // Adjust coords to SVG (which has -10000,-10000 offset)
+    const svgX1 = fromPoint.x + 10000;
+    const svgY1 = fromPoint.y + 10000;
+    const svgX2 = c.x + 10000;
+    const svgY2 = c.y + 10000;
+    preview.setAttribute('d', buildEdgePath(svgX1, svgY1, svgX2, svgY2));
+
+    // Detect hover over input port
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    const newHover = target?.closest('.node')?.dataset?.id;
+    if (newHover && newHover !== fromId && target.classList.contains('node-port') && target.dataset.port === 'input') {
+      hoverNodeId = newHover;
+      target.classList.add('active');
+    } else {
+      // Allow hovering over node body (not just port) to also be a target
+      if (newHover && newHover !== fromId) {
+        hoverNodeId = newHover;
+      } else {
+        hoverNodeId = null;
+      }
+      // clean up previous active port states
+      document.querySelectorAll('.node-port.active').forEach(p => {
+        if (!target || p !== target) p.classList.remove('active');
+      });
+    }
+  };
+
+  const onUp = (e) => {
+    canvasWrap.classList.remove('connecting');
+    preview.remove();
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.querySelectorAll('.node-port.active').forEach(p => p.classList.remove('active'));
+
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    const targetNodeEl = target?.closest('.node');
+    if (targetNodeEl && targetNodeEl.dataset.id !== fromId) {
+      addEdge(fromId, targetNodeEl.dataset.id);
+    }
+  };
+
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+}
+
+function getOutputPoint(node) {
+  // Right-middle of the node (in canvas coords)
+  const el = document.querySelector(`.node[data-id="${node.id}"]`);
+  const h = el ? el.offsetHeight : NODE_H_EST;
+  return { x: node.x + NODE_W, y: node.y + h / 2 };
+}
+function getInputPoint(node) {
+  const el = document.querySelector(`.node[data-id="${node.id}"]`);
+  const h = el ? el.offsetHeight : NODE_H_EST;
+  return { x: node.x, y: node.y + h / 2 };
+}
+
+function buildEdgePath(x1, y1, x2, y2) {
+  // Smooth horizontal bezier — Amplitude-style left-to-right
+  const dx = Math.max(40, Math.abs(x2 - x1) * 0.5);
+  return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+}
+
+function renderEdges() {
+  const svg = document.getElementById('edges-svg');
+  svg.innerHTML = '';
+  const f = getActiveFunnel();
+  if (!f) return;
+
+  // Arrowhead marker
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  defs.innerHTML = `
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3a4150"/>
+    </marker>
+    <marker id="arrow-active" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7dd3a0"/>
+    </marker>
+  `;
+  svg.appendChild(defs);
+
+  f.edges.forEach(edge => {
+    const fromNode = getNode(edge.from);
+    const toNode = getNode(edge.to);
+    if (!fromNode || !toNode) return;
+
+    const p1 = getOutputPoint(fromNode);
+    const p2 = getInputPoint(toNode);
+    // SVG offset is -10000, so coords are coord+10000
+    const x1 = p1.x + 10000, y1 = p1.y + 10000;
+    const x2 = p2.x + 10000, y2 = p2.y + 10000;
+
+    const isSelected = state.selectedEdgeId === edge.id;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'edge-group' + (isSelected ? ' selected' : ''));
+    g.dataset.id = edge.id;
+
+    // Hit area (transparent thick path for easier clicking)
+    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    hit.setAttribute('class', 'edge-hit');
+    hit.setAttribute('d', buildEdgePath(x1, y1, x2, y2));
+    g.appendChild(hit);
+
+    // Visible path
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('class', 'edge-path');
+    path.setAttribute('d', buildEdgePath(x1, y1, x2, y2));
+    path.setAttribute('marker-end', isSelected ? 'url(#arrow-active)' : 'url(#arrow)');
+    g.appendChild(path);
+
+    // Label: conversion rate
+    const conv = getEdgeConversion(edge);
+    const visitors = edge.visitors;
+    let labelText = '';
+    if (edge.label) labelText = edge.label;
+    else if (conv !== null) labelText = `${(conv * 100).toFixed(1)}%`;
+    else if (visitors !== null && visitors !== '') labelText = `${Number(visitors).toLocaleString('ko-KR')}`;
+
+    if (labelText) {
+      const midX = (x1 + x2) / 2;
+      const midY = (y1 + y2) / 2;
+      // Background pill
+      const textW = labelText.length * 6.5 + 12;
+      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      bg.setAttribute('class', 'edge-label-bg');
+      bg.setAttribute('x', midX - textW/2);
+      bg.setAttribute('y', midY - 9);
+      bg.setAttribute('width', textW);
+      bg.setAttribute('height', 18);
+      bg.setAttribute('rx', 3);
+      g.appendChild(bg);
+
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('class', 'edge-label');
+      text.setAttribute('x', midX);
+      text.setAttribute('y', midY + 3);
+      text.setAttribute('text-anchor', 'middle');
+      text.textContent = labelText;
+      g.appendChild(text);
+    }
+
+    g.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectEdge(edge.id);
+    });
+    g.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      selectEdge(edge.id);
+      showContextMenu(e.clientX, e.clientY, [
+        { label: '연결 삭제', danger: true, action: () => deleteEdge(edge.id) },
+      ]);
+    });
+
+    svg.appendChild(g);
+  });
+}
+
+function renderInspector() {
+  const inspector = document.getElementById('inspector');
+  if (state.selectedNodeId) {
+    inspector.innerHTML = renderNodeInspector(getNode(state.selectedNodeId));
+    bindInspectorEvents();
+  } else if (state.selectedEdgeId) {
+    inspector.innerHTML = renderEdgeInspector(getEdge(state.selectedEdgeId));
+    bindInspectorEvents();
+  } else {
+    inspector.innerHTML = `
+      <div class="inspector-empty">
+        <div class="inspector-empty-icon">⌘</div>
+        노드 또는 연결선을<br>선택해 편집하세요
+      </div>
+    `;
+  }
+}
+
+function renderNodeInspector(node) {
+  if (!node) return '';
+  const visitors = getNodeVisitors(node.id);
+  const f = getActiveFunnel();
+  const incomingCount = f.edges.filter(e => e.to === node.id).length;
+  const outgoingCount = f.edges.filter(e => e.from === node.id).length;
+  const isOrigin = incomingCount === 0;
+
+  return `
+    <div class="inspector-section">
+      <div class="inspector-section-title">
+        <span>노드 / ${NODE_TYPES[node.type].label}</span>
+        <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-mute);">${node.id.slice(0,12)}</span>
+      </div>
+
+      <div class="field">
+        <label class="field-label">유형</label>
+        <select class="field-select" data-bind="type">
+          ${Object.entries(NODE_TYPES).map(([k,v]) =>
+            `<option value="${k}" ${k===node.type?'selected':''}>${v.label} (${v.short})</option>`
+          ).join('')}
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="field-label">제목 *</label>
+        <input class="field-input" data-bind="title" value="${escapeHtml(node.title)}" placeholder="노드 제목">
+      </div>
+
+      <div class="field">
+        <label class="field-label">화면 ID / Screen ID</label>
+        <input class="field-input mono" data-bind="screenId" value="${escapeHtml(node.screenId)}" placeholder="예: SE-USER-001">
+        <div class="field-help">디자인 명세나 PRD에서 사용하는 식별자</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">설명</label>
+        <textarea class="field-textarea" data-bind="description" placeholder="이 화면/단계에 대한 메모">${escapeHtml(node.description)}</textarea>
+      </div>
+
+      <div class="field">
+        <label class="field-label">참조 이미지 (URL 또는 업로드)</label>
+        <input class="field-input mono" data-bind="image" value="${escapeHtml(node.image)}" placeholder="https:// 또는 비워두기">
+        <input type="file" accept="image/*" style="margin-top:6px;font-size:11px;color:var(--text-dim);" data-bind-upload="image">
+        ${node.image ? `<div class="field-image-preview"><img src="${escapeHtml(node.image)}" alt="preview" onerror="this.parentElement.innerHTML='<div style=color:var(--text-mute);font-size:10px;padding:8px>이미지 로드 실패</div>'"></div>` : ''}
+      </div>
+    </div>
+
+    <div class="inspector-section">
+      <div class="inspector-section-title">전환 데이터</div>
+
+      ${isOrigin ? `
+        <div class="field">
+          <label class="field-label">유입자 수 (시작점)</label>
+          <input class="field-input mono" type="number" min="0" data-bind="visitors"
+            value="${node.visitors ?? ''}" placeholder="예: 10000">
+          <div class="field-help">진입 노드에 직접 입력. 다른 노드는 들어오는 연결선 합계로 자동 계산됩니다.</div>
+        </div>
+      ` : `
+        <div class="stat-card" style="margin-bottom:8px;">
+          <div class="stat-label">자동 계산된 방문자</div>
+          <div class="stat-value">${visitors !== null ? visitors.toLocaleString('ko-KR') : '—'}</div>
+          <div style="font-size:10px;color:var(--text-mute);margin-top:4px;">들어오는 연결선의 ${incomingCount}개 합계</div>
+        </div>
+      `}
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">In</div>
+          <div class="stat-value">${incomingCount}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Out</div>
+          <div class="stat-value">${outgoingCount}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="inspector-section">
+      <button class="btn btn-danger" style="width:100%;" data-action="delete-node">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4h10M5 4V2h6v2M6 7v5M10 7v5M4 4l1 10h6l1-10"/></svg>
+        노드 삭제
+      </button>
+    </div>
+  `;
+}
+
+function renderEdgeInspector(edge) {
+  if (!edge) return '';
+  const fromNode = getNode(edge.from);
+  const toNode = getNode(edge.to);
+  const fromVisitors = getNodeVisitors(edge.from);
+  const conv = getEdgeConversion(edge);
+
+  return `
+    <div class="inspector-section">
+      <div class="inspector-section-title">
+        <span>연결선 / Edge</span>
+      </div>
+
+      <div class="stat-card" style="margin-bottom:12px;">
+        <div style="font-size:11px;color:var(--text-dim);line-height:1.6;">
+          <div style="font-family:var(--font-mono);color:var(--text-mute);font-size:10px;">FROM</div>
+          <div style="margin-bottom:6px;color:var(--text);">${escapeHtml(fromNode?.title || '?')}</div>
+          <div style="font-family:var(--font-mono);color:var(--text-mute);font-size:10px;">TO</div>
+          <div style="color:var(--text);">${escapeHtml(toNode?.title || '?')}</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">전환 라벨 (선택)</label>
+        <input class="field-input" data-bind-edge="label" value="${escapeHtml(edge.label)}" placeholder="예: 결제 클릭">
+        <div class="field-help">이벤트 이름이나 분기 조건. 비우면 전환율이 자동 표시됩니다.</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">이 경로로 이동한 사용자 수</label>
+        <input class="field-input mono" type="number" min="0" data-bind-edge="visitors"
+          value="${edge.visitors ?? ''}" placeholder="예: 4500">
+        <div class="field-help">${fromNode?.title || '시작'} → ${toNode?.title || '끝'} 으로 진행한 인원</div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">전환율</div>
+          <div class="stat-value" style="color:${conv === null ? 'var(--text-mute)' : (conv >= 0.5 ? 'var(--accent)' : conv >= 0.2 ? 'var(--warn)' : 'var(--bad)')}">
+            ${conv !== null ? (conv*100).toFixed(1)+'%' : '—'}
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">From Visitors</div>
+          <div class="stat-value">${fromVisitors !== null ? fromVisitors.toLocaleString('ko-KR') : '—'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="inspector-section">
+      <button class="btn btn-danger" style="width:100%;" data-action="delete-edge">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 4h10M5 4V2h6v2M6 7v5M10 7v5M4 4l1 10h6l1-10"/></svg>
+        연결 삭제
+      </button>
+    </div>
+  `;
+}
+
+function bindInspectorEvents() {
+  const inspector = document.getElementById('inspector');
+
+  // Node bindings
+  if (state.selectedNodeId) {
+    const node = getNode(state.selectedNodeId);
+    inspector.querySelectorAll('[data-bind]').forEach(input => {
+      const key = input.dataset.bind;
+      input.addEventListener('input', () => {
+        let v = input.value;
+        if (key === 'visitors') v = v === '' ? null : Number(v);
+        node[key] = v;
+        if (key === 'type' || key === 'title' || key === 'screenId' || key === 'description' || key === 'image' || key === 'visitors') {
+          renderNodes();
+          renderEdges();
+        }
+        if (key === 'image') renderInspector();  // refresh preview
+      });
+    });
+    // Image upload
+    inspector.querySelectorAll('[data-bind-upload]').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          node.image = reader.result;
+          renderInspector();
+          renderNodes();
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+    // Delete button
+    inspector.querySelector('[data-action="delete-node"]')?.addEventListener('click', () => {
+      if (confirm(`"${node.title}" 노드를 삭제하시겠습니까?`)) {
+        deleteNode(state.selectedNodeId);
+      }
+    });
+  }
+
+  // Edge bindings
+  if (state.selectedEdgeId) {
+    const edge = getEdge(state.selectedEdgeId);
+    inspector.querySelectorAll('[data-bind-edge]').forEach(input => {
+      const key = input.dataset.bindEdge;
+      input.addEventListener('input', () => {
+        let v = input.value;
+        if (key === 'visitors') v = v === '' ? null : Number(v);
+        edge[key] = v;
+        renderEdges();
+        renderNodes();  // node visitor totals depend on edges
+      });
+    });
+    inspector.querySelector('[data-action="delete-edge"]')?.addEventListener('click', () => {
+      deleteEdge(state.selectedEdgeId);
+    });
+  }
+}
+
+function renderStats() {
+  const f = getActiveFunnel();
+  const nodeCount = f?.nodes.length ?? 0;
+  document.getElementById('stat-nodes').textContent = nodeCount;
+  document.getElementById('stat-edges').textContent = f?.edges.length ?? 0;
+  // Toggle empty canvas hint
+  document.getElementById('canvas-empty-hint').classList.toggle('show', nodeCount === 0);
+}
+
+function renderZoomLevel() {
+  document.getElementById('zoom-level').textContent = Math.round(state.zoom * 100) + '%';
+}
+
+function renderMinimap() {
+  const f = getActiveFunnel();
+  const mini = document.getElementById('minimap');
+  // Clear nodes (keep viewport indicator)
+  mini.querySelectorAll('.minimap-node').forEach(n => n.remove());
+  if (!f || f.nodes.length === 0) {
+    document.getElementById('minimap-viewport').style.display = 'none';
+    return;
+  }
+  // Compute bounds of all nodes
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  f.nodes.forEach(n => {
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + NODE_W);
+    maxY = Math.max(maxY, n.y + NODE_H_EST);
+  });
+  // Pad
+  const pad = 50;
+  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+  const w = maxX - minX, h = maxY - minY;
+  const miniW = 180, miniH = 120;
+  const sx = miniW / w, sy = miniH / h;
+  const s = Math.min(sx, sy);
+  // Center
+  const offX = (miniW - w * s) / 2;
+  const offY = (miniH - h * s) / 2;
+
+  f.nodes.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'minimap-node';
+    el.style.left = ((n.x - minX) * s + offX) + 'px';
+    el.style.top = ((n.y - minY) * s + offY) + 'px';
+    el.style.width = Math.max(2, NODE_W * s) + 'px';
+    el.style.height = Math.max(2, NODE_H_EST * s) + 'px';
+    if (state.selectedNodeId === n.id) el.style.background = 'var(--accent)';
+    mini.appendChild(el);
+  });
+
+  // Viewport indicator
+  const wrap = document.getElementById('canvas-wrap');
+  const cw = wrap.clientWidth, ch = wrap.clientHeight;
+  // Visible area in canvas coords
+  const vx = -state.pan.x / state.zoom;
+  const vy = -state.pan.y / state.zoom;
+  const vw = cw / state.zoom;
+  const vh = ch / state.zoom;
+  const viewport = document.getElementById('minimap-viewport');
+  viewport.style.display = 'block';
+  viewport.style.left = ((vx - minX) * s + offX) + 'px';
+  viewport.style.top = ((vy - minY) * s + offY) + 'px';
+  viewport.style.width = (vw * s) + 'px';
+  viewport.style.height = (vh * s) + 'px';
+}
+
+// ============================================================
+// CONTEXT MENU
+// ============================================================
+function showContextMenu(x, y, items) {
+  const menu = document.getElementById('context-menu');
+  menu.innerHTML = '';
+  items.forEach(item => {
+    if (item.divider) {
+      const d = document.createElement('div');
+      d.className = 'context-menu-divider';
+      menu.appendChild(d);
+      return;
+    }
+    const i = document.createElement('div');
+    i.className = 'context-menu-item' + (item.danger ? ' danger' : '');
+    i.innerHTML = `<span>${item.label}</span>${item.shortcut ? `<kbd>${item.shortcut}</kbd>` : ''}`;
+    i.addEventListener('click', () => {
+      hideContextMenu();
+      item.action();
+    });
+    menu.appendChild(i);
+  });
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.classList.add('show');
+  // adjust if off-screen
+  const rect = menu.getBoundingClientRect();
+  if (rect.right > window.innerWidth) menu.style.left = (x - rect.width) + 'px';
+  if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
+}
+function hideContextMenu() {
+  document.getElementById('context-menu').classList.remove('show');
+}
+
+// ============================================================
+// CANVAS PAN/ZOOM
+// ============================================================
+const canvasWrap = document.getElementById('canvas-wrap');
+
+canvasWrap.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('.node') || e.target.closest('.edge-group')) return;
+  if (e.button !== 0 && e.button !== 1) return;
+
+  clearSelection();
+  canvasWrap.classList.add('panning');
+  const startX = e.clientX, startY = e.clientY;
+  const startPan = { ...state.pan };
+
+  const onMove = (ev) => {
+    state.pan.x = startPan.x + (ev.clientX - startX);
+    state.pan.y = startPan.y + (ev.clientY - startY);
+    applyTransform();
+    renderMinimap();
+  };
+  const onUp = () => {
+    canvasWrap.classList.remove('panning');
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+  };
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+});
+
+// Right-click on canvas: add node menu
+canvasWrap.addEventListener('contextmenu', (e) => {
+  if (e.target.closest('.node') || e.target.closest('.edge-group')) return;
+  e.preventDefault();
+  const c = clientToCanvas(e.clientX, e.clientY);
+  showContextMenu(e.clientX, e.clientY, [
+    { label: '+ 화면 노드', action: () => addNode('screen', c.x - NODE_W/2, c.y - 40) },
+    { label: '+ 액션 노드', action: () => addNode('action', c.x - NODE_W/2, c.y - 40) },
+    { label: '+ 분기 노드', action: () => addNode('decision', c.x - NODE_W/2, c.y - 40) },
+    { label: '+ 완료 노드', action: () => addNode('exit', c.x - NODE_W/2, c.y - 40) },
+  ]);
+});
+
+canvasWrap.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey || true) {
+    // Zoom toward cursor
+    const rect = canvasWrap.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const oldZoom = state.zoom;
+    const delta = -e.deltaY * 0.001;
+    let newZoom = oldZoom * Math.exp(delta);
+    newZoom = Math.max(0.2, Math.min(3, newZoom));
+    // Adjust pan so cursor stays on the same canvas point
+    const ratio = newZoom / oldZoom;
+    state.pan.x = mx - (mx - state.pan.x) * ratio;
+    state.pan.y = my - (my - state.pan.y) * ratio;
+    state.zoom = newZoom;
+    applyTransform();
+    renderZoomLevel();
+    renderMinimap();
+  }
+}, { passive: false });
+
+// Click empty canvas: clear selection + hide menu
+canvasWrap.addEventListener('click', (e) => {
+  if (!e.target.closest('.node') && !e.target.closest('.edge-group')) {
+    clearSelection();
+  }
+  hideContextMenu();
+});
+
+// ============================================================
+// ZOOM CONTROLS
+// ============================================================
+document.getElementById('zoom-in').addEventListener('click', () => zoomBy(1.2));
+document.getElementById('zoom-out').addEventListener('click', () => zoomBy(1/1.2));
+document.getElementById('zoom-fit').addEventListener('click', () => zoomFit());
+
+function zoomBy(factor) {
+  const wrap = document.getElementById('canvas-wrap');
+  const cx = wrap.clientWidth / 2;
+  const cy = wrap.clientHeight / 2;
+  const oldZoom = state.zoom;
+  let newZoom = Math.max(0.2, Math.min(3, oldZoom * factor));
+  const ratio = newZoom / oldZoom;
+  state.pan.x = cx - (cx - state.pan.x) * ratio;
+  state.pan.y = cy - (cy - state.pan.y) * ratio;
+  state.zoom = newZoom;
+  applyTransform();
+  renderZoomLevel();
+  renderMinimap();
+}
+
+function zoomFit() {
+  const f = getActiveFunnel();
+  if (!f || f.nodes.length === 0) {
+    state.pan = { x: 100, y: 100 };
+    state.zoom = 1;
+    applyTransform();
+    renderZoomLevel();
+    renderMinimap();
+    return;
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  f.nodes.forEach(n => {
+    minX = Math.min(minX, n.x);
+    minY = Math.min(minY, n.y);
+    maxX = Math.max(maxX, n.x + NODE_W);
+    maxY = Math.max(maxY, n.y + NODE_H_EST);
+  });
+  const pad = 80;
+  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+  const wrap = document.getElementById('canvas-wrap');
+  const cw = wrap.clientWidth, ch = wrap.clientHeight;
+  const w = maxX - minX, h = maxY - minY;
+  const newZoom = Math.min(cw / w, ch / h, 1.5);
+  state.zoom = newZoom;
+  state.pan.x = (cw - w * newZoom) / 2 - minX * newZoom;
+  state.pan.y = (ch - h * newZoom) / 2 - minY * newZoom;
+  applyTransform();
+  renderZoomLevel();
+  renderMinimap();
+}
+
+// ============================================================
+// DRAG FROM SIDEBAR PALETTE
+// ============================================================
+document.querySelectorAll('.node-template').forEach(tmpl => {
+  // Drag-to-canvas
+  tmpl.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData('node-type', tmpl.dataset.type);
+    e.dataTransfer.effectAllowed = 'copy';
+  });
+  // Double-click to add at center
+  tmpl.addEventListener('dblclick', () => {
+    const wrap = document.getElementById('canvas-wrap');
+    const c = clientToCanvas(wrap.clientWidth/2, wrap.clientHeight/2);
+    addNode(tmpl.dataset.type, c.x - NODE_W/2, c.y - 40);
+  });
+});
+
+canvasWrap.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+canvasWrap.addEventListener('drop', (e) => {
+  e.preventDefault();
+  const type = e.dataTransfer.getData('node-type');
+  if (!type) return;
+  const c = clientToCanvas(e.clientX, e.clientY);
+  addNode(type, c.x - NODE_W/2, c.y - 40);
+});
+
+// ============================================================
+// HEADER ACTIONS
+// ============================================================
+document.getElementById('btn-new-funnel').addEventListener('click', () => {
+  createFunnel();
+  showToast('새 퍼널 생성');
+});
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    funnels: state.funnels.map(f => ({
+      ...f,
+      // keep current pan/zoom for active
+      pan: f.id === state.activeFunnelId ? state.pan : f.pan,
+      zoom: f.id === state.activeFunnelId ? state.zoom : f.zoom,
+    })),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `funnels-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('JSON 파일로 내보냈습니다');
+});
+
+document.getElementById('btn-import').addEventListener('click', () => {
+  document.getElementById('import-file').click();
+});
+document.getElementById('import-file').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data.funnels || !Array.isArray(data.funnels)) throw new Error('invalid format');
+      state.funnels = data.funnels;
+      state.activeFunnelId = state.funnels[0]?.id;
+      const af = getActiveFunnel();
+      if (af) {
+        state.pan = { ...af.pan };
+        state.zoom = af.zoom;
+      }
+      state.selectedNodeId = null;
+      state.selectedEdgeId = null;
+      renderAll();
+      showToast(`${data.funnels.length}개 퍼널 불러옴`);
+    } catch (err) {
+      showToast('잘못된 JSON 파일입니다');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ============================================================
+// KEYBOARD
+// ============================================================
+document.addEventListener('keydown', (e) => {
+  // Don't intercept when typing in inputs
+  if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (state.selectedNodeId) deleteNode(state.selectedNodeId);
+    else if (state.selectedEdgeId) deleteEdge(state.selectedEdgeId);
+  }
+  if (e.key === 'Escape') {
+    clearSelection();
+    hideContextMenu();
+  }
+  if (e.key === 'f' || e.key === 'F') {
+    zoomFit();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+    e.preventDefault();
+    if (state.selectedNodeId) duplicateNode(state.selectedNodeId);
+  }
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.context-menu')) hideContextMenu();
+});
+
+// ============================================================
+// HTML ESCAPE
+// ============================================================
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// ============================================================
+// SEED DATA — 업로드된 그림과 동일한 구조
+// ============================================================
+function seedExample() {
+  const f = createFunnel('Grip 라이브 구매 퍼널');
+
+  // Layout left → right (Amplitude style)
+  // Column x positions
+  const col = (i) => 60 + i * 280;
+  const row = (i) => 80 + i * 130;
+
+  const contents = [
+    addNode('screen', col(0), row(0), { title: 'Content: 한정판매', screenId: 'CT-LMT', description: '한정판매 모듈에서 진입' }),
+    addNode('screen', col(0), row(1), { title: 'Content: 스토어 방송', screenId: 'CT-LV', description: '라이브 방송 시청 중 진입' }),
+    addNode('screen', col(0), row(2), { title: 'Content: 방송 예고', screenId: 'CT-PRE', description: '예고 카드에서 진입' }),
+    addNode('screen', col(0), row(3), { title: 'Content: 쇼츠', screenId: 'CT-SH', description: '쇼츠 영상에서 진입' }),
+    addNode('screen', col(0), row(4), { title: 'Content: 소식', screenId: 'CT-NEWS', description: '소식 피드에서 진입' }),
+  ];
+
+  // 진입자 합계 = 옵션/수량 선택의 유입 (set on edges)
+  contents[0].visitors = 4200;
+  contents[1].visitors = 12500;
+  contents[2].visitors = 1800;
+  contents[3].visitors = 6300;
+  contents[4].visitors = 2100;
+
+  const optQty = addNode('action', col(1), row(2), { title: '옵션 / 수량 선택', screenId: 'OPT-QTY', description: '옵션 바텀시트' });
+
+  const cart = addNode('action', col(2), row(1), { title: '장바구니', screenId: 'CART', description: '장바구니 담기' });
+  const liveOrder = addNode('action', col(2), row(3), { title: '라이브주문서', screenId: 'LIVE-ORD', description: '라이브 내 즉시 주문' });
+  const liveOrderList = addNode('screen', col(3), row(3), { title: '라이브주문서 목록', screenId: 'LIVE-ORD-LIST' });
+
+  const order = addNode('action', col(3), row(1), { title: '주문서', screenId: 'ORDER' });
+
+  const done = addNode('exit', col(4), row(0), { title: '결제 완료', screenId: 'PAY-DONE', description: '최종 전환' });
+
+  // edges with visitors counts
+  contents.forEach((c, i) => {
+    addEdgeWith(c.id, optQty.id, c.visitors); // assume all who entered content reached opt-qty
+  });
+
+  // Now optQty fanout
+  addEdgeWith(optQty.id, cart.id, 9800, '장바구니 담기');
+  addEdgeWith(optQty.id, liveOrder.id, 5400, '바로 주문');
+  addEdgeWith(optQty.id, order.id, 2100, '바로 결제');
+
+  addEdgeWith(cart.id, order.id, 7200);
+  addEdgeWith(liveOrder.id, order.id, 4100);
+  addEdgeWith(liveOrder.id, liveOrderList.id, 1300, '주문 목록 확인');
+  addEdgeWith(liveOrderList.id, order.id, 1100);
+
+  addEdgeWith(order.id, done.id, 11500);
+
+  setTimeout(() => zoomFit(), 50);
+}
+
+function addEdgeWith(fromId, toId, visitors, label='') {
+  const e = addEdge(fromId, toId);
+  if (e) {
+    e.visitors = visitors;
+    e.label = label;
+  }
+}
+
+// ============================================================
+// URL HASH SHARING
+// ============================================================
+function serializeState() {
+  // Save current pan/zoom to active funnel before serializing
+  const af = getActiveFunnel();
+  if (af) { af.pan = { ...state.pan }; af.zoom = state.zoom; }
+  return {
+    v: 1,
+    funnels: state.funnels,
+    activeFunnelId: state.activeFunnelId,
+  };
+}
+
+function encodeStateToHash() {
+  const data = serializeState();
+  const json = JSON.stringify(data);
+  const compressed = LZString.compressToEncodedURIComponent(json);
+  return { hash: compressed, json, compressed };
+}
+
+function decodeStateFromHash(hash) {
+  try {
+    const json = LZString.decompressFromEncodedURIComponent(hash);
+    if (!json) return null;
+    const data = JSON.parse(json);
+    if (!data.funnels || !Array.isArray(data.funnels)) return null;
+    return data;
+  } catch (e) {
+    console.error('Failed to decode hash', e);
+    return null;
+  }
+}
+
+function loadStateFromURL() {
+  const h = window.location.hash;
+  if (!h.startsWith(URL_HASH_PREFIX)) return false;
+  const encoded = h.slice(URL_HASH_PREFIX.length);
+  const data = decodeStateFromHash(encoded);
+  if (!data) return false;
+  state.funnels = data.funnels;
+  state.activeFunnelId = data.activeFunnelId || data.funnels[0]?.id;
+  const af = getActiveFunnel();
+  if (af) {
+    state.pan = { ...(af.pan || { x: 100, y: 100 }) };
+    state.zoom = af.zoom || 1;
+  }
+  state.selectedNodeId = null;
+  state.selectedEdgeId = null;
+  state.loadedFromURL = true;
+  return true;
+}
+
+function buildShareURL() {
+  const { hash } = encodeStateToHash();
+  const base = window.location.href.split('#')[0];
+  return base + URL_HASH_PREFIX + hash;
+}
+
+function updateURLHash() {
+  if (!state.autoSyncURL) return;
+  const { hash } = encodeStateToHash();
+  // Use replaceState so we don't pollute browser history on every keystroke
+  history.replaceState(null, '', URL_HASH_PREFIX + hash);
+  flashURLSyncStatus();
+}
+
+let _syncFlashTimer = null;
+function flashURLSyncStatus() {
+  const el = document.getElementById('url-status');
+  el.classList.add('saving');
+  clearTimeout(_syncFlashTimer);
+  _syncFlashTimer = setTimeout(() => el.classList.remove('saving'), 400);
+}
+
+function setAutoSync(on) {
+  state.autoSyncURL = on;
+  const el = document.getElementById('url-status');
+  el.classList.toggle('active', on);
+  el.querySelector('.url-status-text').textContent = on ? 'URL 자동저장 ON' : 'URL 자동저장 OFF';
+  if (on) updateURLHash();
+  else {
+    // Clean the hash when turning off
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+}
+
+// Wrap mutating functions to trigger URL sync
+const _origRenderAll = renderAll;
+renderAll = function() {
+  _origRenderAll.apply(this, arguments);
+  if (state.autoSyncURL) {
+    // Debounce URL updates
+    clearTimeout(updateURLHash._timer);
+    updateURLHash._timer = setTimeout(updateURLHash, 200);
+  }
+};
+
+// Also catch direct edits via inspector inputs (renderEdges/renderNodes path)
+// We'll also debounce-update on any inspector change
+const _origBindInspector = bindInspectorEvents;
+bindInspectorEvents = function() {
+  _origBindInspector.apply(this, arguments);
+  if (!state.autoSyncURL) return;
+  document.querySelectorAll('#inspector input, #inspector textarea, #inspector select').forEach(input => {
+    input.addEventListener('input', () => {
+      clearTimeout(updateURLHash._timer);
+      updateURLHash._timer = setTimeout(updateURLHash, 400);
+    });
+  });
+};
+
+// ============================================================
+// SHARE MODAL
+// ============================================================
+function openShareModal() {
+  const { hash, json, compressed } = encodeStateToHash();
+  const url = buildShareURL();
+
+  document.getElementById('share-url-display').textContent = url;
+  document.getElementById('share-size-funnels').textContent = state.funnels.length;
+
+  const urlLen = url.length;
+  const urlEl = document.getElementById('share-size-url');
+  urlEl.textContent = urlLen.toLocaleString('ko-KR') + ' chars';
+  urlEl.classList.remove('warn', 'bad');
+  if (urlLen > URL_HARD_LIMIT) urlEl.classList.add('bad');
+  else if (urlLen > URL_SAFE_LIMIT) urlEl.classList.add('warn');
+
+  const ratio = json.length > 0 ? (compressed.length / json.length * 100).toFixed(0) + '%' : '—';
+  document.getElementById('share-size-ratio').textContent = ratio;
+
+  // Warning block
+  const warn = document.getElementById('share-warning');
+  warn.innerHTML = '';
+  if (urlLen > URL_HARD_LIMIT) {
+    warn.innerHTML = `<div class="warning-block bad">
+      ⚠ URL이 너무 깁니다 (${urlLen.toLocaleString('ko-KR')}자). 일부 메신저·브라우저에서 잘릴 수 있습니다.<br>
+      대안: 우측 상단 <strong>Export</strong> 버튼으로 JSON 파일을 보내고 받는 사람이 <strong>Import</strong>하도록 안내하세요.
+    </div>`;
+  } else if (urlLen > URL_SAFE_LIMIT) {
+    warn.innerHTML = `<div class="warning-block">
+      URL 길이가 늘어나고 있습니다 (${urlLen.toLocaleString('ko-KR')}자). 슬랙·카카오톡 등 대부분의 환경에서는 동작하지만,
+      퍼널이 더 커지면 JSON Export 사용을 권장합니다.
+    </div>`;
+  }
+
+  document.getElementById('share-auto-sync').checked = state.autoSyncURL;
+  document.getElementById('share-modal').classList.add('show');
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal').classList.remove('show');
+}
+
+async function copyShareURL() {
+  const url = buildShareURL();
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('URL을 클립보드에 복사했습니다');
+    closeShareModal();
+  } catch (e) {
+    // Fallback: select text in display
+    const display = document.getElementById('share-url-display');
+    const range = document.createRange();
+    range.selectNodeContents(display);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    showToast('URL이 선택되었습니다. Cmd/Ctrl+C로 복사하세요');
+  }
+}
+
+// ============================================================
+// SHARE EVENT HANDLERS
+// ============================================================
+document.getElementById('btn-share').addEventListener('click', openShareModal);
+document.getElementById('share-modal-close').addEventListener('click', closeShareModal);
+document.getElementById('share-modal-cancel').addEventListener('click', closeShareModal);
+document.getElementById('share-modal-copy').addEventListener('click', copyShareURL);
+document.getElementById('share-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'share-modal') closeShareModal();
+});
+document.getElementById('share-auto-sync').addEventListener('change', (e) => {
+  setAutoSync(e.target.checked);
+});
+document.getElementById('url-status').addEventListener('click', () => {
+  setAutoSync(!state.autoSyncURL);
+  showToast(state.autoSyncURL ? '편집 시 URL이 자동 갱신됩니다' : 'URL 자동저장이 꺼졌습니다');
+});
+
+// Close modal on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('share-modal').classList.contains('show')) {
+    closeShareModal();
+  }
+});
+
+// Listen for hash changes (e.g. user pastes a new URL into the address bar)
+window.addEventListener('hashchange', () => {
+  if (loadStateFromURL()) {
+    renderAll();
+    showToast('URL에서 퍼널을 불러왔습니다');
+  }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+const loadedFromURL = loadStateFromURL();
+if (!loadedFromURL) {
+  seedExample();
+}
+renderAll();
+if (loadedFromURL) {
+  showToast(`공유 URL에서 ${state.funnels.length}개 퍼널을 불러왔습니다`);
+  setTimeout(() => zoomFit(), 50);
+}
+
+// Re-render minimap on window resize
+window.addEventListener('resize', () => { applyTransform(); renderMinimap(); });
+</script>
+</body>
+</html>
