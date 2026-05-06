@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grip 폐쇄형 — CPO Product Review v0.3</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #faf9f7;
+  --bg-warm: #f5f3ef;
+  --surface: #fff;
+  --surface-alt: #f0eeea;
+  --border: #e5e2dc;
+  --border-strong: #d0cdc6;
+  --text: #1a1a1a;
+  --text-2: #555550;
+  --text-3: #8a8880;
+  --red: #c44;
+  --red-bg: #fdf2f2;
+  --red-border: #f0d0d0;
+  --green: #2a7a5a;
+  --green-bg: #f0f7f3;
+  --green-border: #c8e0d4;
+  --blue: #3366aa;
+  --blue-bg: #f0f4fa;
+  --blue-border: #c8d8f0;
+  --amber: #9a7020;
+  --amber-bg: #fdf8ee;
+  --amber-border: #e8dcc0;
+  --accent: #1a1a1a;
+  --mono: 'JetBrains Mono', monospace;
+  --serif: 'DM Serif Display', serif;
+  --sans: 'Noto Sans KR', -apple-system, sans-serif;
+  --r: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; line-height:1.7; }
+.page { max-width:920px; margin:0 auto; padding:48px 32px; }
+
+/* Header */
+.hdr { border-bottom:2px solid var(--accent); padding-bottom:32px; margin-bottom:48px; }
+.hdr-meta { font-family:var(--mono); font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--text-3); margin-bottom:14px; display:flex; gap:20px; flex-wrap:wrap; }
+.hdr h1 { font-family:var(--serif); font-size:34px; line-height:1.25; margin-bottom:16px; letter-spacing:-0.01em; }
+.hdr p { color:var(--text-2); font-size:15px; max-width:760px; }
+
+.concept { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:18px 22px; margin-top:24px; display:flex; gap:14px; align-items:flex-start; }
+.concept-icon { font-size:22px; flex-shrink:0; }
+.concept-text { font-size:13px; color:var(--text-2); line-height:1.65; }
+.concept-text strong { color:var(--text); display:block; margin-bottom:4px; }
+
+/* Tabs */
+.tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:32px; flex-wrap:wrap; }
+.tab { background:none; border:none; font-family:var(--sans); font-size:13.5px; padding:12px 18px; color:var(--text-3); cursor:pointer; position:relative; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color 0.2s, border-color 0.2s; }
+.tab:hover { color:var(--text-2); }
+.tab.on { color:var(--text); border-bottom-color:var(--accent); font-weight:600; }
+.cnt { display:inline-block; margin-left:6px; padding:1px 7px; background:var(--surface-alt); border-radius:10px; font-size:11px; font-family:var(--mono); color:var(--text-3); }
+
+/* Sections */
+.sec { display:none; }
+.sec.on { display:block; }
+.sec-intro { font-size:15px; color:var(--text-2); margin-bottom:24px; line-height:1.7; }
+.sec-intro strong { color:var(--text); }
+
+/* Architecture box */
+.arch-box { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:24px; margin-bottom:32px; }
+.arch-title { font-family:var(--mono); font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text-3); margin-bottom:14px; }
+.arch-flow { display:grid; grid-template-columns:1fr auto 1.4fr auto 1fr; gap:14px; align-items:center; margin-bottom:8px; }
+.arch-node { padding:14px 16px; border-radius:6px; text-align:center; font-weight:500; font-size:13px; line-height:1.5; }
+.arch-node small { display:block; margin-top:5px; font-size:11px; color:var(--text-3); font-weight:400; }
+.arch-node-ext { background:var(--blue-bg); border:1px solid var(--blue-border); }
+.arch-node-closed { background:var(--green-bg); border:2px solid var(--green); color:var(--green); font-weight:700; }
+.arch-node-open { background:var(--surface-alt); border:1px solid var(--border); color:var(--text-3); }
+.arch-arr { font-size:18px; color:var(--text-3); }
+
+/* Comparison grid */
+.cmp-grid { display:grid; grid-template-columns:160px 1fr 1fr; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; }
+.cmp-head { padding:14px 16px; background:var(--surface-alt); font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-3); border-bottom:1px solid var(--border); }
+.cmp-head:first-child { background:var(--accent); color:#fff; }
+.cmp-cell { padding:13px 16px; border-bottom:1px solid var(--border); font-size:13px; color:var(--text-2); }
+.cmp-cell:first-child { background:var(--bg-warm); font-weight:600; color:var(--text); }
+.cmp-cell:last-child { background:var(--green-bg); }
+.cmp-grid > div:nth-last-child(-n+3) { border-bottom:none; }
+.badge-diff { display:inline-block; margin-left:6px; padding:1px 7px; background:var(--red-bg); color:var(--red); border-radius:3px; font-size:10px; font-weight:700; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.5px; }
+.badge-same { display:inline-block; margin-left:6px; padding:1px 7px; background:var(--green-bg); color:var(--green); border-radius:3px; font-size:10px; font-weight:700; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.5px; }
+.badge-new { display:inline-block; margin-left:6px; padding:1px 7px; background:var(--amber-bg); color:var(--amber); border-radius:3px; font-size:10px; font-weight:700; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.5px; }
+
+/* Strip cards (뺄것 남길것) */
+.strip-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; margin-bottom:24px; }
+.strip-cat { font-family:var(--mono); font-size:11px; letter-spacing:1px; text-transform:uppercase; padding:6px 12px; border-radius:4px; display:inline-block; margin-bottom:14px; font-weight:700; }
+.strip-cat.keep { background:var(--green-bg); color:var(--green); border:1px solid var(--green-border); }
+.strip-cat.lite { background:var(--blue-bg); color:var(--blue); border:1px solid var(--blue-border); }
+.strip-cat.cut { background:var(--red-bg); color:var(--red); border:1px solid var(--red-border); }
+.strip-cat.new { background:var(--amber-bg); color:var(--amber); border:1px solid var(--amber-border); }
+.feat { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:14px 16px; cursor:pointer; transition:all 0.2s; }
+.feat:hover { border-color:var(--border-strong); transform:translateY(-1px); }
+.feat-name { font-weight:600; font-size:13.5px; margin-bottom:4px; }
+.feat-tag { font-family:var(--mono); font-size:10px; color:var(--text-3); text-transform:uppercase; }
+.feat-reason { display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); font-size:12.5px; color:var(--text-2); line-height:1.6; }
+.feat.open { background:var(--bg-warm); border-color:var(--accent); }
+.feat.open .feat-reason { display:block; }
+
+/* Verdict */
+.verd-cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.verd-col { padding:18px 20px; background:var(--surface); border:1px solid var(--border); border-radius:6px; }
+.verd-col-label { font-family:var(--mono); font-size:10px; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; font-weight:700; }
+.verd-col-body { font-size:13px; color:var(--text-2); line-height:1.7; }
+.verd-col-body strong { color:var(--text); }
+.c-green { color:var(--green); }
+.c-red { color:var(--red); }
+
+/* MVP scope */
+.mvp-box { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:24px; }
+.mvp-title { font-family:var(--mono); font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--text-3); margin-bottom:16px; font-weight:700; }
+.mvp-cols { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+.mvp-cols h4 { font-size:14px; font-weight:700; margin-bottom:10px; }
+.mvp-cols div { font-size:13px; color:var(--text-2); line-height:2; }
+
+/* New design boxes */
+.new-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:14px; margin-bottom:24px; }
+.new-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:20px; }
+.new-card-num { font-family:var(--mono); font-size:11px; color:var(--text-3); margin-bottom:8px; letter-spacing:1px; }
+.new-card-title { font-size:15px; font-weight:700; margin-bottom:10px; }
+.new-card-body { font-size:13px; color:var(--text-2); line-height:1.7; }
+
+/* Principles */
+.princ-grid { display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:24px; }
+.princ-card { background:var(--surface); border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:6px; padding:16px 20px; display:grid; grid-template-columns:50px 1fr; gap:16px; align-items:start; }
+.princ-num { font-family:var(--serif); font-size:32px; color:var(--text-3); line-height:1; }
+.princ-title { font-weight:700; font-size:14px; margin-bottom:6px; }
+.princ-body { font-size:13px; color:var(--text-2); line-height:1.7; }
+
+/* Footer */
+.ftr { margin-top:56px; padding-top:20px; border-top:1px solid var(--border); display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.ftr span { font-family:var(--mono); font-size:10px; color:var(--text-3); letter-spacing:0.5px; }
+
+/* Responsive */
+@media (max-width:768px) {
+  .page { padding:24px 16px; }
+  .tabs { margin:0 -16px 24px; padding:0 16px; overflow-x:auto; flex-wrap:nowrap; }
+  .tab { white-space:nowrap; }
+  .cmp-grid { grid-template-columns:120px 1fr 1fr; }
+  .arch-flow { grid-template-columns:1fr; gap:8px; }
+  .arch-arr { transform:rotate(90deg); }
+  .verd-cols, .mvp-cols, .new-grid { grid-template-columns:1fr; }
+  .hdr h1 { font-size:26px; }
+}
+
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+.sec.on > * { animation:fadeIn .35s ease both; }
+.sec.on > *:nth-child(1) { animation-delay:.04s; }
+.sec.on > *:nth-child(2) { animation-delay:.08s; }
+.sec.on > *:nth-child(3) { animation-delay:.12s; }
+.sec.on > *:nth-child(4) { animation-delay:.16s; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-meta">
+    <span>CPO Product Review</span>
+    <span>v0.3 — Revised</span>
+    <span>2025.03</span>
+  </div>
+  <h1>폐쇄형 = Grip 오픈 플랫폼<br>심플 에디션</h1>
+  <p>별도 도메인, 격리된 회원풀. 그 외 모든 것(회원가입, 상품, 주문, 결제, 라이브)은 Grip 플랫폼이 제공한다. 핵심 질문: "오픈형에서 뭘 빼고 뭘 남길 것인가?"</p>
+
+  <div class="concept">
+    <div class="concept-icon">💡</div>
+    <div class="concept-text">
+      <strong>레퍼런스 모델: 퀸라이브 클릭메이트</strong>
+      자사몰/SNS 팬덤을 가진 크리에이터가 직접 상품을 소싱하여 판매하는 도구. 플랫폼이 회원·상품·주문·결제·라이브 인프라 전체를 제공하고, 셀러는 자기 채널에서 유입만 책임진다.
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab on" data-s="compare">오픈형 vs 폐쇄형</button>
+  <button class="tab" data-s="strip">뺄 것 / 남길 것<span class="cnt">13</span></button>
+  <button class="tab" data-s="new">신규 설계 포인트<span class="cnt">4</span></button>
+  <button class="tab" data-s="principles">프로덕트 원칙<span class="cnt">4</span></button>
+  <button class="tab" data-s="verdict">MVP 스코프 & Gate</button>
+</div>
+
+<!-- SEC 1: 오픈형 vs 폐쇄형 -->
+<div class="sec on" id="s-compare">
+  <p class="sec-intro">
+    폐쇄형은 새 프로덕트가 아니라 <strong>Grip 오픈 플랫폼의 변형(variant)</strong>입니다. 핵심 인프라는 동일하고, 3가지만 다릅니다.
+  </p>
+
+  <div class="arch-box">
+    <div class="arch-title">서비스 구조 비교</div>
+    <div class="arch-flow">
+      <div class="arch-node arch-node-ext">셀러 자체 채널<small>자사몰 · SNS · 팬덤 커뮤니티</small></div>
+      <div class="arch-arr">→</div>
+      <div class="arch-node arch-node-closed">폐쇄형 (별도 도메인)<small>Grip 플랫폼 심플 에디션<br>격리된 회원풀 · 독립 URL</small></div>
+      <div class="arch-arr" style="opacity:.35">✕</div>
+      <div class="arch-node arch-node-open">Grip 오픈형 (grip.show)<small>기존 서비스 · 회원풀 완전 분리</small></div>
+    </div>
+    <p style="font-size:12px; color:var(--text-3); text-align:center; margin-top:8px;">
+      ✕ = 오픈형 유저는 폐쇄형 콘텐츠에 접근 불가. 완전 격리.
+    </p>
+  </div>
+
+  <div class="cmp-grid">
+    <div class="cmp-head"></div>
+    <div class="cmp-head">Grip 오픈형</div>
+    <div class="cmp-head">폐쇄형 (심플 에디션)</div>
+
+    <div class="cmp-cell">도메인</div>
+    <div class="cmp-cell">grip.show</div>
+    <div class="cmp-cell">별도 전용 도메인 <span class="badge-diff">다름</span></div>
+
+    <div class="cmp-cell">회원풀</div>
+    <div class="cmp-cell">Grip 통합 회원</div>
+    <div class="cmp-cell">셀러 채널별 격리된 회원 <span class="badge-diff">다름</span></div>
+
+    <div class="cmp-cell">트래픽 소스</div>
+    <div class="cmp-cell">Grip 앱/웹 내 탐색, 추천</div>
+    <div class="cmp-cell">셀러 자체 채널에서 유입 <span class="badge-diff">다름</span></div>
+
+    <div class="cmp-cell">회원가입/인증</div>
+    <div class="cmp-cell">Grip 계정 (Kakao OAuth)</div>
+    <div class="cmp-cell">Grip 폐쇄형 계정 (동일 인프라) <span class="badge-same">동일</span></div>
+
+    <div class="cmp-cell">상품 등록/관리</div>
+    <div class="cmp-cell">셀러 콘솔에서 등록</div>
+    <div class="cmp-cell">셀러 콘솔 (심플 버전) <span class="badge-same">동일</span></div>
+
+    <div class="cmp-cell">라이브 스트리밍</div>
+    <div class="cmp-cell">Grip 라이브 엔진</div>
+    <div class="cmp-cell">동일 엔진 <span class="badge-same">동일</span></div>
+
+    <div class="cmp-cell">결제 / 정산</div>
+    <div class="cmp-cell">GripPay + 정산 시스템</div>
+    <div class="cmp-cell">동일 인프라 사용 <span class="badge-same">동일</span></div>
+
+    <div class="cmp-cell">주문 / 배송</div>
+    <div class="cmp-cell">Grip 주문 시스템</div>
+    <div class="cmp-cell">동일 시스템 <span class="badge-same">동일</span></div>
+
+    <div class="cmp-cell">홈 피드 / 추천</div>
+    <div class="cmp-cell">알고리즘 기반 탐색 피드</div>
+    <div class="cmp-cell">미제공 (셀러 채널 직진입) <span class="badge-diff">다름</span></div>
+
+    <div class="cmp-cell">셀러 등급/배지</div>
+    <div class="cmp-cell">메가/베스트셀러 등급</div>
+    <div class="cmp-cell">미제공 (브랜드 자체 운영) <span class="badge-diff">다름</span></div>
+
+    <div class="cmp-cell">알림 채널</div>
+    <div class="cmp-cell">앱 푸시 + 알림톡</div>
+    <div class="cmp-cell">알림톡 단일 채널 <span class="badge-same">동일</span></div>
+
+    <div class="cmp-cell">채널 랜딩 페이지</div>
+    <div class="cmp-cell">미제공 (Grip 통합 UI)</div>
+    <div class="cmp-cell">셀러 채널 전용 랜딩 <span class="badge-new">신규</span></div>
+  </div>
+</div>
+
+<!-- SEC 2: 뺄 것 / 남길 것 -->
+<div class="sec" id="s-strip">
+  <p class="sec-intro">
+    오픈형 기능을 4가지로 분류. <strong>유지(5)</strong> / <strong>경량화(3)</strong> / <strong>제거(3)</strong> / <strong>신규(2)</strong>. 카드 클릭하면 판단 근거.
+  </p>
+
+  <div class="strip-cat keep">유지 · KEEP</div>
+  <div class="strip-grid">
+    <div class="feat" onclick="tog(this)"><div class="feat-name">회원가입 / 인증</div><div class="feat-tag">Kakao OAuth · 본인 인증</div><div class="feat-reason">Grip 인증 인프라 그대로 활용. 단, 회원풀이 채널별로 격리되도록 user_id에 channel_id 매핑 추가만 필요.</div></div>
+    <div class="feat" onclick="tog(this)"><div class="feat-name">상품 등록 / 관리</div><div class="feat-tag">셀러 콘솔 · 카탈로그</div><div class="feat-reason">상품 데이터 모델은 동일. 폐쇄형은 채널 내에서만 노출되도록 visibility 플래그 추가.</div></div>
+    <div class="feat" onclick="tog(this)"><div class="feat-name">라이브 스트리밍</div><div class="feat-tag">동일 엔진 · 동일 품질</div><div class="feat-reason">Grip의 강점인 라이브 인프라는 그대로 가져감. 영상 품질·인터랙션·구매 전환 UX 모두 동일.</div></div>
+    <div class="feat" onclick="tog(this)"><div class="feat-name">결제 / 정산</div><div class="feat-tag">GripPay · 정산 시스템</div><div class="feat-reason">결제 PG 연동·정산 로직 그대로. 셀러별 정산 흐름은 변동 없음.</div></div>
+    <div class="feat" onclick="tog(this)"><div class="feat-name">주문 / 배송 / CS</div><div class="feat-tag">기존 시스템 재활용</div><div class="feat-reason">주문 상태 관리, 송장 입력, 1:1 문의 등 운영 시스템 모두 동일. 어드민 도구도 그대로.</div></div>
+  </div>
+
+  <div class="strip-cat lite">경량화 · LITE</div>
+  <div class="strip-grid">
+    <div class="feat" onclick="tog(this)"><div class="feat-name">셀러 콘솔</div><div class="feat-tag">Console Lite · 핵심 기능만</div><div class="feat-reason">오픈형 셀러 콘솔의 등급별 기능, 마케팅 도구, 광고 기능 등 제거. 상품·라이브·주문·정산만 노출.</div></div>
+    <div class="feat" onclick="tog(this)"><div class="feat-name">User UI</div><div class="feat-tag">홈 피드 제거 · 채널 직진입</div><div class="feat-reason">유저는 셀러 채널 URL로 진입하므로 Grip 홈 피드가 필요 없음. 채널 랜딩 → 라이브 시청 → 구매 직선 동선.</div></div>
+    <div class="feat" onclick="tog(this)"><div class="feat-name">어드민 메뉴</div><div class="feat-tag">필수 운영만</div><div class="feat-reason">오픈형 어드민의 등급 관리, 콘텐츠 모더레이션 일부, 추천 알고리즘 운영 등 제거. 입점·결제수단·주문·정산만.</div></div>
+  </div>
+
+  <div class="strip-cat cut">제거 · CUT</div>
+  <div class="strip-grid">
+    <div class="feat" onclick="tog(this)"><div class="feat-name">홈 피드 / 추천</div><div class="feat-tag">탐색 동선 미제공</div><div class="feat-reason">폐쇄형은 셀러 채널 격리 모델. 다른 채널 콘텐츠가 노출되면 안 되며, 추천 알고리즘 자체가 무의미.</div></div>
+    <div class="feat" onclick="tog(this)"><div class="feat-name">팔로우 / 셀러 등급</div><div class="feat-tag">소셜 기능 미제공</div><div class="feat-reason">셀러 자체 채널에서 이미 충성고객을 보유. 메가셀러·베스트셀러 등급은 오픈형 양면시장 동인이라 폐쇄형엔 부적합.</div></div>
+    <div class="feat" onclick="tog(this)"><div class="feat-name">알림센터 (앱 내)</div><div class="feat-tag">알림톡 단일</div><div class="feat-reason">웹 기반 폐쇄형은 푸시 불가. 알림톡으로 완결. 알림센터 UI는 카카오톡과 중복이라 가치 없음.</div></div>
+  </div>
+
+  <div class="strip-cat new">신규 · NEW</div>
+  <div class="strip-grid">
+    <div class="feat" onclick="tog(this)"><div class="feat-name">채널 랜딩 페이지</div><div class="feat-tag">셀러별 전용 진입점</div><div class="feat-reason">폐쇄형의 핵심 진입점. 셀러 브랜딩 + 진행 중/예정 라이브 + 베스트 상품. 도메인 라우팅으로 채널 식별.</div></div>
+    <div class="feat" onclick="tog(this)"><div class="feat-name">회원풀 격리 레이어</div><div class="feat-tag">Multi-channel 회원 모델</div><div class="feat-reason">동일 카카오 계정도 채널 A와 채널 B에서 별도 user_id 발급. DB 스키마 + 인증 로직 변경 필요.</div></div>
+  </div>
+</div>
+
+<!-- SEC 3: 신규 설계 포인트 -->
+<div class="sec" id="s-new">
+  <p class="sec-intro">
+    "정말 새로 만들어야 하는 것"은 4개. 2트랙 병렬 진행 시 <strong>4~6주</strong> 소요 예상. 임베드 SDK·시스템 분리 같은 거대한 신규 개발은 없음.
+  </p>
+
+  <div class="new-grid">
+    <div class="new-card">
+      <div class="new-card-num">01</div>
+      <div class="new-card-title">회원풀 격리 (Multi-channel)</div>
+      <div class="new-card-body">동일 카카오 계정이 채널 A와 채널 B에서 별도 user_id로 가입되도록. DB의 users 테이블에 channel_id 컬럼 추가하고, 인증 후 발급되는 세션도 channel scope 분리. 가장 먼저 풀어야 할 핵심 과제.</div>
+    </div>
+    <div class="new-card">
+      <div class="new-card-num">02</div>
+      <div class="new-card-title">도메인 라우팅</div>
+      <div class="new-card-body">폐쇄형 전용 베이스 도메인 + 셀러 채널 식별. 예: live.example.com/[channel-slug]. 향후 셀러 커스텀 도메인 연결도 고려한 라우팅 미들웨어 설계.</div>
+    </div>
+    <div class="new-card">
+      <div class="new-card-num">03</div>
+      <div class="new-card-title">채널 랜딩 페이지</div>
+      <div class="new-card-body">셀러 브랜드 컬러·로고·소개 + 진행 중 라이브 + 예정 라이브 + 베스트 상품 + 후기. 셀러가 직접 편집 가능한 기본 커스터마이징(컬러, 로고, 소개글).</div>
+    </div>
+    <div class="new-card">
+      <div class="new-card-num">04</div>
+      <div class="new-card-title">셀러 콘솔 Lite 분기</div>
+      <div class="new-card-body">기존 오픈형 셀러 콘솔에서 폐쇄형 채널 셀러는 Lite 메뉴만 보이도록 권한·라우팅 분기. 코드 베이스는 동일하되 메뉴 노출 정책만 분리.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SEC 4: 프로덕트 원칙 -->
+<div class="sec" id="s-principles">
+  <p class="sec-intro">
+    이 4가지가 모든 의사결정의 기준. 신규 기능 검토할 때 이 원칙에 부합하지 않으면 보류 또는 거절.
+  </p>
+
+  <div class="princ-grid">
+    <div class="princ-card">
+      <div class="princ-num">1</div>
+      <div>
+        <div class="princ-title">신규 개발은 격리·라우팅·랜딩만</div>
+        <div class="princ-body">Grip 오픈형의 모든 기능은 재활용. 폐쇄형 전용으로 신규 개발하는 영역은 채널 격리·도메인 라우팅·랜딩 페이지에 한정. SDK, 임베드 위젯 등 외부 통합 기능은 v2 이후로 미룬다.</div>
+      </div>
+    </div>
+    <div class="princ-card">
+      <div class="princ-num">2</div>
+      <div>
+        <div class="princ-title">완전 격리 우선</div>
+        <div class="princ-body">오픈형 유저와 폐쇄형 채널 유저는 절대 섞이지 않는다. 추천·검색·홈피드에서도 노출 금지. 데이터 분석에서도 별도 코호트 처리. "왜 굳이 격리해야 하나"라는 의문이 드는 시점이 의사결정 분기점.</div>
+      </div>
+    </div>
+    <div class="princ-card">
+      <div class="princ-num">3</div>
+      <div>
+        <div class="princ-title">셀러는 본인 채널만 책임</div>
+        <div class="princ-body">유입은 셀러가 자체 채널(자사몰·SNS·팬덤 커뮤니티)에서 책임진다. Grip은 트래픽을 일으키지 않는다. 셀러 등급·추천·교차노출 같은 양면시장 메커니즘은 폐쇄형에 부적합.</div>
+      </div>
+    </div>
+    <div class="princ-card">
+      <div class="princ-num">4</div>
+      <div>
+        <div class="princ-title">알림톡 단일 채널</div>
+        <div class="princ-body">웹 기반 폐쇄형은 푸시 알림 불가. 알림은 카카오 알림톡으로 완결. 별도 알림센터 UI는 만들지 않는다. "라이브 예고" 같은 시각적 정보는 채널 랜딩 페이지에서 처리.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SEC 5: MVP 스코프 & Gate -->
+<div class="sec" id="s-verdict">
+  <p class="sec-intro">
+    <strong>결론 — Go.</strong> 이미 검증된 인프라의 변형이고, 신규 개발 범위가 명확하며 작다. 핵심 리스크는 채널 격리 DB 설계가 오픈형에 미치는 영향 범위.
+  </p>
+
+  <div class="verd-cols">
+    <div class="verd-col">
+      <div class="verd-col-label c-green">Go 사유</div>
+      <div class="verd-col-body">
+        <strong>인프라 재활용</strong> — 회원·상품·주문·결제·라이브 모두 검증된 시스템 그대로 사용. 신규 코드는 라우팅·랜딩 정도.
+        <br><br>
+        <strong>시장 검증</strong> — 클릭메이트, 쇼피파이 라이브 등 유사 모델 존재. D2C 브랜드의 자사몰 라이브 수요가 실재함.
+        <br><br>
+        <strong>오픈형 시너지</strong> — Grip 오픈형 셀러 중 자사몰을 운영하는 셀러에게 크로스셀 가능. CAC 절감.
+      </div>
+    </div>
+    <div class="verd-col">
+      <div class="verd-col-label c-red">Go/No-Go 게이트</div>
+      <div class="verd-col-body">
+        <strong>Gate 1 — 2주 후</strong><br>
+        회원풀 격리 설계 완료. DB 스키마 변경이 오픈형에 미치는 영향 범위 파악. 기술적으로 Go 가능한지 판단.
+        <br><br>
+        <strong>Gate 2 — 4주 후</strong><br>
+        셀러 채널 랜딩 페이지 프로토타입 + 셀러 콘솔 Lite 기능 분기 완료. 내부 테스트 몰에서 상품 등록 → 라이브 → 구매 풀 플로우 동작 확인.
+        <br><br>
+        <strong>Gate 3 — 6주 후</strong><br>
+        파일럿 셀러 1곳에서 실제 라이브 판매 진행. 구매 전환율, 시스템 안정성, 셀러 피드백 확인.
+      </div>
+    </div>
+  </div>
+
+  <div class="mvp-box">
+    <div class="mvp-title">MVP 스코프 (Gate 3 기준)</div>
+    <div class="mvp-cols">
+      <div>
+        <h4>✅ 포함</h4>
+        <div>
+          별도 도메인 + 채널 라우팅<br>
+          채널별 격리된 회원 가입/인증<br>
+          셀러 채널 랜딩 페이지 (기본 커스터마이징)<br>
+          셀러 콘솔 Lite (상품등록, 라이브, 주문, 매출)<br>
+          라이브 스트리밍 (오픈형 동급 품질)<br>
+          상품 구매 & 결제 (GripPay)<br>
+          기본 매출 대시보드<br>
+          카카오 알림톡 (채널 대상)
+        </div>
+      </div>
+      <div>
+        <h4>❌ v2 이후</h4>
+        <div>
+          셀러 커스텀 도메인 연결<br>
+          고급 채널 테마/레이아웃 커스터마이징<br>
+          크리에이터 매칭 서비스<br>
+          크로스 채널 벤치마크 리포트<br>
+          데이터 Export API (프리미엄)<br>
+          자동화된 셀러 온보딩<br>
+          리플레이(다시보기) 커머스
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="ftr">
+  <span>Grip CPO Product Review — 폐쇄형 심플 에디션 v0.3</span>
+  <span>Confidential · Draft</span>
+</div>
+
+</div>
+<script>
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+    t.classList.add('on');
+    document.getElementById('s-'+t.dataset.s).classList.add('on');
+  });
+});
+function tog(el){
+  const was=el.classList.contains('open');
+  document.querySelectorAll('.feat.open').forEach(f=>f.classList.remove('open'));
+  if(!was) el.classList.add('open');
+}
+</script>
+</body>
+</html>
