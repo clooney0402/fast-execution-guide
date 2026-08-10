@@ -211,6 +211,7 @@ input[type=search]{min-width:200px;flex:1}
             <option value="pri">우선순위</option>
             <option value="month">목표일정</option>
             <option value="stage">진행 단계</option>
+            <option value="dept">인입부서</option>
           </select>
         </span>
       </div>
@@ -227,6 +228,11 @@ input[type=search]{min-width:200px;flex:1}
         <h3>도메인 분포</h3>
         <div class="note">필터 적용 결과 기준</div>
         <div id="domainDist"></div>
+      </div>
+      <div class="panel">
+        <h3>월별 릴리즈 건수</h3>
+        <div class="note">완료일정 기준 · 상태 탭 외 필터는 반영됩니다</div>
+        <div id="releaseByMonth"></div>
       </div>
     </aside>
   </div>
@@ -248,6 +254,8 @@ const STAGES = ['기획', '디자인', '개발', 'QA', '릴리즈'];
 // 시트에 실제로 어떤 상태값이 쓰이는지 제가 완전히 확인하지 못해, 흔히 쓰이는 두 방식(세분화/축약)을 모두 넣었습니다.
 // 로드 후 배너에 "정의되지 않은 상태값"이 뜨면 그 값을 여기 추가해주세요.
 const STATUS_MAP = {
+  // '신규'는 아직 파이프라인에 들어오기 전 단계라 '기획' 버킷에 합치지 않고 따로 뺍니다 (탭 순서상 가장 앞에 둠)
+  '신규':       [-1, true],
   '기획검토':   [0, true],
   '기획중':     [0, true],
   '기획완료':   [0, false],
@@ -261,7 +269,6 @@ const STATUS_MAP = {
   '릴리즈완료': [4, false],
   '배포완료':   [4, false],
   // 축약형 상태값
-  '신규':       [0, true],
   '검토':       [0, true],
   '진행중':     [2, true],
   '완료':       [4, false]
@@ -505,11 +512,11 @@ function render() {
   renderKPI(rows);
   renderTabs(base);
   renderList(rows);
-  renderSide(rows);
+  renderSide(rows, base);
 }
 
 function renderStages() {
-  const base = ROWS.filter(r => !r.offPipeline);
+  const base = ROWS.filter(r => !r.offPipeline && r.curStage !== -1);
   const counts = STAGES.map((_, i) => base.filter(r => r.curStage === i).length);
   const max = Math.max(1, ...counts), total = base.length;
 
@@ -568,7 +575,8 @@ const SORTERS = {
   no:    (a, b) => (Number(a.no) || 1e9) - (Number(b.no) || 1e9),
   pri:   (a, b) => (a.priRank - b.priRank) || (Number(a.no) || 1e9) - (Number(b.no) || 1e9),
   month: (a, b) => (a.month || '9999').localeCompare(b.month || '9999') || (a.priRank - b.priRank),
-  stage: (a, b) => (b.stage - a.stage) || (a.priRank - b.priRank)
+  stage: (a, b) => (b.stage - a.stage) || (a.priRank - b.priRank),
+  dept:  (a, b) => (a['인입부서'] || '').localeCompare(b['인입부서'] || '', 'ko') || (a.priRank - b.priRank)
 };
 
 function rail(r) {
@@ -631,7 +639,7 @@ function renderList(rows) {
   if (draggable) bindDrag();
 }
 
-function renderSide(rows) {
+function renderSide(rows, base) {
   const active = rows.filter(r => !r.done && !r.offPipeline);
   const byPM = {};
   active.forEach(r => {
@@ -653,6 +661,19 @@ function renderSide(rows) {
     .sort((a, b) => b[1] - a[1])
     .map(([k, v]) => `<div class="bd"><span>${esc(k)}</span><b>${v}</b></div>`).join('')
     || '<div class="note">표시할 과제가 없습니다.</div>';
+
+  // 완료일정 기준 월별 릴리즈 건수 — 상태 탭 선택과 무관하게 항상 전체 릴리즈 이력을 보여주도록 base 사용
+  const byMonth = {};
+  base.forEach(r => {
+    if (!r.done) return;
+    const m = (r['완료일정'] || '').slice(0, 7);
+    if (!m) return;
+    byMonth[m] = (byMonth[m] || 0) + 1;
+  });
+  const months = Object.keys(byMonth).sort();
+  document.getElementById('releaseByMonth').innerHTML = months.length
+    ? months.map(m => `<div class="bd"><span>${esc(m)}</span><b>${byMonth[m]}</b></div>`).join('')
+    : '<div class="note">완료일정이 기록된 릴리즈가 없습니다.</div>';
 }
 
 /* ═══════════════ 9. 드래그 정렬 ═══════════════ */
