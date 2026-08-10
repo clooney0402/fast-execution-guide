@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>프로덕트 과제 현황판</title>
+<title>프로덕트 과제 대시보드</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css">
 <style>
 :root{
@@ -84,7 +84,7 @@ input[type=search]{min-width:200px;flex:1}
 .board-head .sortbox{margin-left:auto;display:flex;align-items:center;gap:6px}
 .board-head select{padding:5px 8px;font-size:12px}
 
-.row{display:grid;grid-template-columns:22px 34px minmax(0,1fr) 150px 116px;gap:14px;align-items:center;padding:12px 18px 12px 10px;border-bottom:1px solid var(--line2)}
+.row{display:grid;grid-template-columns:22px 34px minmax(0,1fr) 150px;gap:14px;align-items:center;padding:12px 18px 12px 10px;border-bottom:1px solid var(--line2)}
 .row:last-child{border-bottom:0}
 .row:hover{background:#FAFBF8}
 .row.dragging{opacity:.4}
@@ -124,7 +124,6 @@ input[type=search]{min-width:200px;flex:1}
 
 .pm{font-size:13px;font-weight:600}
 .pm small{display:block;font-weight:400;font-size:11px;color:var(--mute);margin-top:2px}
-.goal{font-size:11px;color:var(--mute);line-height:1.35;word-break:keep-all}
 
 .empty{padding:40px 18px;text-align:center;color:var(--mute);font-size:13px}
 .empty b{display:block;color:var(--ink);font-size:14px;margin-bottom:5px}
@@ -158,7 +157,6 @@ input[type=search]{min-width:200px;flex:1}
   .stage .n{font-size:18px}.stage .l{font-size:10.5px}.stage .d{display:none}
   .row{grid-template-columns:26px minmax(0,1fr);gap:8px;padding:12px 14px 12px 8px}
   .row .pm{grid-column:2;font-size:12px}
-  .row .goal{display:none}
   .grip{display:none}
   .board-head .sortbox{margin-left:0}
 }
@@ -170,7 +168,7 @@ input[type=search]{min-width:200px;flex:1}
 
   <div class="top">
     <div>
-      <h1>프로덕트 과제 현황판</h1>
+      <h1>프로덕트 과제 대시보드</h1>
       <div class="sub">마스터 시트를 원본으로 두고, 과제가 어느 단계에 멈춰 있는지 보여줍니다.</div>
     </div>
     <div class="top-actions">
@@ -196,7 +194,6 @@ input[type=search]{min-width:200px;flex:1}
     <select id="fType" aria-label="타입"></select>
     <select id="fDomain" aria-label="도메인"></select>
     <select id="fDept" aria-label="인입부서"></select>
-    <select id="fGoal" aria-label="전사목표"></select>
     <select id="fMonth" aria-label="목표월"></select>
     <button class="chip" id="fLate" aria-pressed="false">지연만</button>
     <button class="btn ghost" id="reset">필터 해제</button>
@@ -222,7 +219,7 @@ input[type=search]{min-width:200px;flex:1}
 
     <aside class="side">
       <div class="panel">
-        <h3>담당PM 부하</h3>
+        <h3>PM별 리소스 현황</h3>
         <div class="note">릴리즈 완료 제외 · 건수 기준</div>
         <div id="pmLoad"></div>
       </div>
@@ -240,7 +237,7 @@ input[type=search]{min-width:200px;flex:1}
 <script>
 /* ═══════════════ 1. 연결 설정 ═══════════════ */
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbzpZpx0myLs2aMgchiHL8lamqOzOSOLlTI1TK5NeucNzTsQaCaMclVEM6-8b8h3wXDm/exec',        // Apps Script 웹앱 URL (.../exec) — 읽기 + 순서 저장. 배포 후 이 자리에 붙여넣으세요.
+  API_URL: 'https://script.google.com/macros/s/AKfycbzpZpx0myLs2aMgchiHL8lamqOzOSOLlTI1TK5NeucNzTsQaCaMclVEM6-8b8h3wXDm/exec',        // Apps Script 웹앱 URL (.../exec) — 읽기 + 순서 저장
   SHEET_CSV_URL: ''   // 대안: 파일 > 공유 > 웹에 게시로 얻은 CSV URL — 읽기 전용, 순서 저장 불가
 };
 
@@ -432,10 +429,8 @@ async function load() {
       const res = await fetch(CONFIG.SHEET_CSV_URL);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       ROWS = parseCSV(await res.text()).map(shape); MODE = 'csv';
-      banner.innerHTML = `<div class="banner">CSV 읽기 전용으로 연결됐습니다. 드래그로 바꾼 순서는 저장되지 않습니다 — 저장까지 쓰려면 <code>API_URL</code>을 설정하세요.</div>`;
     } else {
       ROWS = SAMPLE.map(shape); MODE = 'sample';
-      banner.innerHTML = `<div class="banner">샘플 데이터로 보고 있습니다. 실제 시트를 붙이려면 코드 상단 <code>CONFIG.API_URL</code>에 Apps Script 웹앱 URL을 넣으세요.</div>`;
     }
   } catch (e) {
     ROWS = SAMPLE.map(shape); MODE = 'sample';
@@ -455,7 +450,7 @@ async function load() {
 }
 
 /* ═══════════════ 7. 필터 ═══════════════ */
-const F = { q:'', PM:'', Type:'', Domain:'', Dept:'', Goal:'', Month:'', stage:null, late:false, status:'' };
+const F = { q:'', PM:'', Type:'', Domain:'', Dept:'', Month:'', stage:null, late:false, status:'' };
 let SORT = 'no';
 
 function fillSelect(id, label, key, sortFn) {
@@ -471,7 +466,6 @@ function buildFilters() {
   fillSelect('fType', '타입', '타입');
   fillSelect('fDomain', '도메인', '도메인');
   fillSelect('fDept', '인입부서', '인입부서');
-  fillSelect('fGoal', '전사목표', '전사목표');
   fillSelect('fMonth', '목표월', 'month', (a, b) => a.localeCompare(b));
 }
 
@@ -484,7 +478,6 @@ function baseFiltered() {
     if (F.Type && r['타입'] !== F.Type) return false;
     if (F.Domain && r['도메인'] !== F.Domain) return false;
     if (F.Dept && r['인입부서'] !== F.Dept) return false;
-    if (F.Goal && r['전사목표'] !== F.Goal) return false;
     if (F.Month && r.month !== F.Month) return false;
     if (F.late && !r.late) return false;
     if (F.stage !== null && r.curStage !== F.stage) return false;
@@ -506,8 +499,6 @@ function statusOrder(s) {
 /* ═══════════════ 8. 렌더 ═══════════════ */
 function render() {
   const base = baseFiltered();
-  // 현재 선택된 탭이 사라졌으면 전체로 되돌림
-  if (F.status && !base.some(r => r.statusKey === F.status)) F.status = '';
   const rows = base.filter(r => !F.status || r.statusKey === F.status);
 
   renderStages();
@@ -537,23 +528,32 @@ function renderStages() {
     : '표시할 과제가 없습니다.';
 }
 
+const PRIORITY_LEVELS = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];
+
 function renderKPI(rows) {
   const late = rows.filter(r => r.late).length;
-  const done = rows.filter(r => r.done).length;
   const mine = rows.filter(r => r.month === thisMonth).length;
-  const must = rows.filter(r => r.priRank === 0 && !r.done).length;
+
+  const priCounts = {};
+  PRIORITY_LEVELS.forEach(p => { priCounts[p] = 0; });
+  rows.forEach(r => { if (priCounts[r.priLabel] !== undefined) priCounts[r.priLabel]++; });
+  const priCards = PRIORITY_LEVELS
+    .map(p => `<div class="kpi"><b>${priCounts[p]}</b><span>${p}</span></div>`)
+    .join('');
+
   document.getElementById('kpis').innerHTML = `
     <div class="kpi"><b>${rows.length}</b><span>표시 중</span></div>
     <div class="kpi"><b>${mine}</b><span>이번 달 목표</span></div>
-    <div class="kpi"><b>${must}</b><span>최우선 · 미완료</span></div>
-    <div class="kpi"><b>${done}</b><span>릴리즈 완료</span></div>
+    ${priCards}
     ${late ? `<div class="kpi warn"><b>${late}</b><span>목표월 초과</span></div>` : ''}`;
 }
 
 function renderTabs(base) {
   const counts = {};
   base.forEach(r => { counts[r.statusKey] = (counts[r.statusKey] || 0) + 1; });
-  const keys = Object.keys(counts).sort((a, b) => statusOrder(a) - statusOrder(b));
+  // 다른 필터 때문에 지금 0건이어도 탭 자체는 항상 보이도록, 전체 ROWS에 존재하는 상태값 기준으로 만듦
+  const allKeys = [...new Set(ROWS.map(r => r.statusKey))];
+  const keys = allKeys.sort((a, b) => statusOrder(a) - statusOrder(b));
 
   document.getElementById('tabs').innerHTML =
     `<button class="tab" role="tab" data-status="" aria-selected="${!F.status}">
@@ -561,7 +561,7 @@ function renderTabs(base) {
     keys.map(k => `
       <button class="tab ${OFF_PIPELINE.includes(k) || k === '상태 없음' ? 'off' : ''}" role="tab"
               data-status="${esc(k)}" aria-selected="${F.status === k}">
-        ${esc(k)}<span class="c">${counts[k]}</span></button>`).join('');
+        ${esc(k)}<span class="c">${counts[k] || 0}</span></button>`).join('');
 }
 
 const SORTERS = {
@@ -626,7 +626,6 @@ function renderList(rows) {
         </div>
       </div>
       <div class="pm">${esc(r['담당PM'] || '미배정')}<small>${esc(r['목표일정'] || '일정 미정')}</small></div>
-      <div class="goal">${esc(r['전사목표'] || '')}</div>
     </div>`).join('');
 
   if (draggable) bindDrag();
@@ -718,7 +717,7 @@ function toast(msg) {
 }
 
 document.getElementById('q').addEventListener('input', e => { F.q = e.target.value; render(); });
-[['fPM','PM'],['fType','Type'],['fDomain','Domain'],['fDept','Dept'],['fGoal','Goal'],['fMonth','Month']]
+[['fPM','PM'],['fType','Type'],['fDomain','Domain'],['fDept','Dept'],['fMonth','Month']]
   .forEach(([id, key]) => document.getElementById(id)
     .addEventListener('change', e => { F[key] = e.target.value; render(); }));
 
@@ -738,9 +737,9 @@ document.getElementById('stages').addEventListener('click', e => {
   render();
 });
 document.getElementById('reset').addEventListener('click', () => {
-  Object.assign(F, { q:'', PM:'', Type:'', Domain:'', Dept:'', Goal:'', Month:'', stage:null, late:false, status:'' });
+  Object.assign(F, { q:'', PM:'', Type:'', Domain:'', Dept:'', Month:'', stage:null, late:false, status:'' });
   document.getElementById('q').value = '';
-  ['fPM','fType','fDomain','fDept','fGoal','fMonth'].forEach(id => document.getElementById(id).value = '');
+  ['fPM','fType','fDomain','fDept','fMonth'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('fLate').setAttribute('aria-pressed', 'false');
   render();
 });
