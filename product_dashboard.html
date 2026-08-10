@@ -103,10 +103,10 @@ input[type=search]{min-width:200px;flex:1}
 .t-운영과제{background:#E9ECE6;color:var(--ink2)}
 .t-미분류{background:#F1F3EF;color:var(--mute)}
 .pri{background:#E9ECE6;color:var(--ink2)}
-.pri.필수{background:var(--brick-soft);color:var(--brick)}
-.pri.상{background:var(--amber-soft);color:var(--amber)}
-.pri.중{background:#E9ECE6;color:var(--ink2)}
-.pri.하{background:#F1F3EF;color:var(--mute)}
+.pri.필수,.pri.P0{background:var(--brick-soft);color:var(--brick)}
+.pri.상,.pri.P1{background:var(--amber-soft);color:var(--amber)}
+.pri.중,.pri.P2{background:#E9ECE6;color:var(--ink2)}
+.pri.하,.pri.P3,.pri.P4{background:#F1F3EF;color:var(--mute)}
 .dom{background:transparent;border:1px solid var(--line);color:var(--ink2);padding:1px 6px}
 .dept{color:var(--mute)}
 .docs{display:inline-flex;gap:11px;margin-left:5px}
@@ -240,14 +240,16 @@ input[type=search]{min-width:200px;flex:1}
 <script>
 /* ═══════════════ 1. 연결 설정 ═══════════════ */
 const CONFIG = {
-  API_URL: '',        // Apps Script 웹앱 URL (.../exec) — 읽기 + 순서 저장
-  SHEET_CSV_URL: ''   // 대안: CSV 게시 URL — 읽기 전용
+  API_URL: '',        // Apps Script 웹앱 URL (.../exec) — 읽기 + 순서 저장. 배포 후 이 자리에 붙여넣으세요.
+  SHEET_CSV_URL: ''   // 대안: 파일 > 공유 > 웹에 게시로 얻은 CSV URL — 읽기 전용, 순서 저장 불가
 };
 
-/* ═══════════════ 2. 파이프라인 정의 — 상태값이 늘어나면 여기만 고치세요 ═══════════════ */
+/* ═══════════════ 2. 파이프라인 정의 — [상태] 컬럼 값 기준. 세분화된 값과 축약된 값을 모두 지원합니다 ═══════════════ */
 const STAGES = ['기획', '디자인', '개발', 'QA', '릴리즈'];
 
 // 상태값 → [단계 index, 그 단계 진행중인지]  ※ 탭 순서도 이 정의 순서를 따릅니다
+// 시트에 실제로 어떤 상태값이 쓰이는지 제가 완전히 확인하지 못해, 흔히 쓰이는 두 방식(세분화/축약)을 모두 넣었습니다.
+// 로드 후 배너에 "정의되지 않은 상태값"이 뜨면 그 값을 여기 추가해주세요.
 const STATUS_MAP = {
   '기획검토':   [0, true],
   '기획중':     [0, true],
@@ -260,13 +262,20 @@ const STATUS_MAP = {
   'QA중':       [3, true],
   'QA완료':     [3, false],
   '릴리즈완료': [4, false],
-  '배포완료':   [4, false]
+  '배포완료':   [4, false],
+  // 축약형 상태값
+  '신규':       [0, true],
+  '검토':       [0, true],
+  '진행중':     [2, true],
+  '완료':       [4, false]
 };
 const OFF_PIPELINE = ['대기', '보류', '홀드', '드랍', '취소'];
-const STAGE_DATE_COL = ['기획완료', '디자인완료', '개발완료', 'QA완료', '릴리즈일정'];
+// 단계별 완료일 컬럼 — 시트에 이런 컬럼이 없다면 그냥 빈 값으로 남아 무시됩니다
+const STAGE_DATE_COL = ['기획완료', '디자인완료', '개발완료', 'QA완료', '완료일정'];
+// 우선순위 표기가 'P0'~'P4'처럼 숫자형이면 그대로 랭크로 쓰고, '필수/상/중/하'처럼 텍스트형이면 이 표를 씁니다
 const PRIORITY_RANK = { '필수': 0, '상': 1, '중': 2, '하': 3 };
 
-/* ═══════════════ 3. 헤더 별칭 (CSV 직결용) ═══════════════ */
+/* ═══════════════ 3. 헤더 별칭 — 실제 헤더 문구를 몰라도 최대한 알아서 매칭되도록 폭넓게 등록 ═══════════════ */
 const ALIASES = {
   'ID': ['id'],
   'no': ['no.', 'no', '번호', '순번', '넘버'],
@@ -284,38 +293,31 @@ const ALIASES = {
   '디자인완료': ['디자인완료', '디자인 완료'],
   '개발완료': ['개발완료', '개발 완료'],
   'QA완료': ['qa완료', 'qa 완료'],
-  '릴리즈일정': ['릴리즈일정', '릴리즈 일정', '릴리즈'],
+  '완료일정': ['완료일정', '완료 일정', '릴리즈일정', '릴리즈 일정', '릴리즈'],
   'jira': ['jira', '지라', '지라링크'],
   'PRD': ['prd'],
-  '프로토타입': ['시안/프로토타입(선택)', '시안/프로토타입', '프로토타입', '시안']
+  '프로토타입': ['프로토타입', '시안/프로토타입(선택)', '시안/프로토타입', '시안'],
+  '기획디자인': ['기획/디자인', '기획디자인', '기획 디자인']
 };
 
 /* ═══════════════ 4. 샘플 데이터 ═══════════════ */
 const SAMPLE = [
-  ['전사','프로젝트','홈/전시','가격비교 2차','플랫폼 서비스 및 차별화 경쟁력 강화','1.필수','2026-08','최혜영','기획완료','2026-08-31','','','','','FDS-16173','','y'],
-  ['전사','일반과제','상품/쿠폰','판매자 및 상품 신뢰 정보','플랫폼 서비스 및 차별화 경쟁력 강화','2.상','2026-09','최혜영','기획검토','2026-08-10','','','','','FDS-16148','',''],
-  ['전사','프로젝트','관리자어드민','빌보드배너/퀵메뉴 개선 - 관리기능 추가 개발','플랫폼 서비스 및 차별화 경쟁력 강화','2.상','2026-08','최혜영','기획완료','2026-08-06','','','','','FDS-16997','y',''],
-  ['전사','일반과제','홈/전시','[메인개편 후속] 오늘의 TOP100 로직 개선','플랫폼 서비스 및 차별화 경쟁력 강화','1.중','2026-08','최혜영','디자인완료','2026-07-15','2026-08-06','','','','FDS-16148','','y'],
-  ['싱싱파트','일반과제','홈/전시','[메인개편 후속] 싱싱배송 판매자노출순에 즐겨찾기 로직 제거','온라인 사업 성장 가속화 및 생태계 확대','1.중','2026-08','최혜영','개발완료','2026-07-15','','2026-08-05','','','FDS-16940','y',''],
-  ['전사','운영과제','홈/전시','[가격비교 1차] 이벤트페이지 상품확대 및 이미지 변경','플랫폼 서비스 및 차별화 경쟁력 강화','1.중','2026-08','최혜영','릴리즈완료','2026-07-23','2026-07-31','2026-08-05','2026-08-05','2026-08-06','FDS-16173','',''],
-  ['cmd파트','운영과제','홈/전시','[오늘특가] 관리기능 개선 - 판매중 수정 제한 해제','플랫폼 서비스 및 차별화 경쟁력 강화','2.상','2026-08','최혜영','기획검토','2026-08-06','','','','','FDS-15831','',''],
-  ['mkt팀','운영과제','상품/쿠폰','혜택페이지 수정','온라인 사업 성장 가속화 및 생태계 확대','1.하','2026-09','최혜영','기획검토','','','','','','','',''],
-  ['전사','운영과제','홈/전시','판매자명/상품명/대표이미지 정제 메뉴얼 제작 및 배포','플랫폼 서비스 및 차별화 경쟁력 강화','1.하','2026-09','최혜영','기획완료','','','','','','','',''],
-  ['싱싱파트','일반과제','홈/전시','[메인개편 후속] 싱싱배송 구좌에 CJFW 노출 추가','온라인 사업 성장 가속화 및 생태계 확대','2.상','2026-08','김연화','기획검토','','','','','','FDS-17097','',''],
-  ['전사','일반과제','검색/추천','검색 결과 UI/UX 개선','플랫폼 서비스 및 차별화 경쟁력 강화','1.중','2026-07','김연화','디자인완료','2026-06-20','2026-07-10','','','','FDS-17097','y','y'],
-  ['cmd파트','일반과제','상품/쿠폰','중량단가 노출','플랫폼 서비스 및 차별화 경쟁력 강화','2.상','2026-09','장현정','대기','','','','','','FDS-16997','',''],
-  ['싱싱파트','일반과제','주문/결제','[싱싱배송] 비정량 저장','온라인 사업 성장 가속화 및 생태계 확대','1.중','2026-08','장현정','기획완료','2026-08-04','','','','','FDS-16940','',''],
-  ['전사','일반과제','판매자어드민','[판매자센터2.0] 쿠폰 판가(예산)관리 어드민 개선','플랫폼 서비스 및 차별화 경쟁력 강화','2.상','2026-08','강윤서','개발완료','2026-06-30','2026-07-14','2026-08-05','','','FDS-15831','y','y'],
-  ['전사','프로젝트','상품/쿠폰','상품 쿠폰가 노출 정책 개선','플랫폼 서비스 및 차별화 경쟁력 강화','1.하','2026-09','강윤서','기획검토','','','','','','','','']
+  ['전사','프로젝트','홈/전시','가격비교 phase2','플랫폼 서비스 및 차별화 경쟁력 강화','P0','2026-08','최혜영','진행중','','','','','2026-08-31','FDS-16173','',''],
+  ['전사','일반과제','상품/쿠폰','판매자 및 상품 신뢰 정보','플랫폼 서비스 및 차별화 경쟁력 강화','P1','','최혜영','대기','','','','','','FDS-16148','',''],
+  ['전사','일반과제','검색/추천','검색 결과 UI/UX 개선','플랫폼 서비스 및 차별화 경쟁력 강화','P1','','김연화','신규','','','','','','FDS-17097','',''],
+  ['cmd파트','일반과제','상품/쿠폰','중량단가 노출','온라인 사업 성장 가속화 및 생태계 확대','P2','','장현정','대기','','','','','','FDS-16997','',''],
+  ['싱싱파트','일반과제','주문/결제','[싱싱배송] 비정량 저장','온라인 사업 성장 가속화 및 생태계 확대','P2','','장현정','대기','','','','','','FDS-16940','',''],
+  ['싱싱파트','일반과제','홈/전시','[싱싱배송] 싱싱배송 노출구좌 확대','온라인 사업 성장 가속화 및 생태계 확대','P2','','장현정','대기','','','','','','FDS-16940','',''],
+  ['','일반과제','상품/쿠폰','박스육 SKU 옵션 추가','온라인 사업 성장 가속화 및 생태계 확대','P3','','','신규','','','','','','','',''],
+  ['','일반과제','판매자어드민','[판매자센터2.0] 쿠폰 판가(예산)관리 어드민 개선','플랫폼 서비스 및 차별화 경쟁력 강화','P1','2026-08','강윤서','검토','','','','','','FDS-15831','',''],
+  ['','프로젝트','상품/쿠폰','상품 쿠폰가 노출 정책 개선','플랫폼 서비스 및 차별화 경쟁력 강화','P3','','강윤서','신규','','','','','','','','']
 ].map((r, i) => ({
-  ID: 's' + i, no: i + 1,
+  ID: 's' + (i + 1), no: i + 1,
   인입부서: r[0], 타입: r[1], 도메인: r[2], 과제명: r[3], 전사목표: r[4],
   우선순위: r[5], 목표일정: r[6], 담당PM: r[7], 상태: r[8],
-  기획완료: r[9], 디자인완료: r[10], 개발완료: r[11], QA완료: r[12], 릴리즈일정: r[13],
+  기획완료: r[9], 디자인완료: r[10], 개발완료: r[11], 'QA완료': r[12], 완료일정: r[13],
   jira: r[14] ? 'https://boro.atlassian.net/browse/' + r[14] : '',
-  BRD: '',
-  PRD: r[15] ? 'https://docs.google.com/document/d/sample-prd' : '',
-  프로토타입: r[16] ? 'https://www.figma.com/file/sample-proto' : ''
+  BRD: '', PRD: '', 프로토타입: '', 기획디자인: ''
 }));
 
 /* ═══════════════ 5. 정규화 ═══════════════ */
@@ -335,16 +337,31 @@ function normDate(v) {
 function parsePriority(v) {
   const s = clean(v);
   if (!s) return { label: '', rank: 99 };
+  let m = s.match(/^P\s*(\d+)/i);
+  if (m) return { label: s.toUpperCase().replace(/\s+/g, ''), rank: Number(m[1]) };
   const label = s.replace(/^\d+\s*[.)]\s*/, '').trim();
   return { label, rank: PRIORITY_RANK[label] ?? 99 };
 }
 const thisMonth = new Date().toISOString().slice(0, 7);
 
+function aliasRow(rawObj) {
+  const norm = {};
+  for (const h in rawObj) norm[nk(h)] = rawObj[h];
+  const o = {};
+  for (const key in ALIASES) {
+    const cands = [nk(key), ...ALIASES[key].map(nk)];
+    const foundKey = Object.keys(norm).find(nh => cands.includes(nh));
+    if (foundKey !== undefined) o[key] = norm[foundKey];
+  }
+  if (rawObj.ID !== undefined) o.ID = rawObj.ID;
+  return o;
+}
+
 function shape(raw) {
   const o = {};
   for (const k in ALIASES) o[k] = clean(raw[k]);
   o.ID = o.ID || raw.ID || Math.random().toString(36).slice(2);
-  ['목표일정', ...STAGE_DATE_COL].forEach(k => { o[k] = normDate(o[k]); });
+  [...new Set(['목표일정', ...STAGE_DATE_COL])].filter(Boolean).forEach(k => { o[k] = normDate(o[k]); });
 
   const p = parsePriority(o['우선순위']);
   o.priLabel = p.label; o.priRank = p.rank;
@@ -410,7 +427,7 @@ async function load() {
     if (CONFIG.API_URL) {
       const res = await fetch(CONFIG.API_URL);
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      ROWS = (await res.json()).map(shape); MODE = 'api';
+      ROWS = (await res.json()).map(aliasRow).map(shape); MODE = 'api';
     } else if (CONFIG.SHEET_CSV_URL) {
       const res = await fetch(CONFIG.SHEET_CSV_URL);
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -524,11 +541,11 @@ function renderKPI(rows) {
   const late = rows.filter(r => r.late).length;
   const done = rows.filter(r => r.done).length;
   const mine = rows.filter(r => r.month === thisMonth).length;
-  const must = rows.filter(r => r.priLabel === '필수' && !r.done).length;
+  const must = rows.filter(r => r.priRank === 0 && !r.done).length;
   document.getElementById('kpis').innerHTML = `
     <div class="kpi"><b>${rows.length}</b><span>표시 중</span></div>
     <div class="kpi"><b>${mine}</b><span>이번 달 목표</span></div>
-    <div class="kpi"><b>${must}</b><span>필수 · 미완료</span></div>
+    <div class="kpi"><b>${must}</b><span>최우선 · 미완료</span></div>
     <div class="kpi"><b>${done}</b><span>릴리즈 완료</span></div>
     ${late ? `<div class="kpi warn"><b>${late}</b><span>목표월 초과</span></div>` : ''}`;
 }
@@ -573,7 +590,7 @@ function rail(r) {
 }
 
 function docLinks(r) {
-  const items = [['JIRA', r.jira], ['BRD', r.BRD], ['PRD', r.PRD], ['시안', r['프로토타입']]]
+  const items = [['JIRA', r.jira], ['BRD', r.BRD], ['PRD', r.PRD], ['프로토타입', r['프로토타입']], ['기획/디자인', r['기획디자인']]]
     .filter(([, u]) => u && /^https?:/.test(u));
   if (!items.length) return '';
   return `<span class="docs">${items.map(([n, u]) =>
