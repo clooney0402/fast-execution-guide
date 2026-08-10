@@ -650,7 +650,7 @@ function renderList(rows) {
           ${docLinks(r)}
         </div>
       </div>
-      <div class="pm">${esc(r['담당PM'] || '미배정')}<small>${esc(r['목표일정'] || '일정 미정')}</small></div>
+      <div class="pm">${esc(r['담당PM'] || '미배정')}<small>${esc(r.month || '일정 미정')}</small></div>
     </div>`).join('');
 
   if (draggable) bindDrag();
