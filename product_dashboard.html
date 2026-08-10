@@ -43,7 +43,7 @@ button{font-family:inherit;font-size:13px;cursor:pointer}
 .pipeline{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px 16px;margin-bottom:14px}
 .pipeline h2{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 2px}
 .pipeline .lead{font-size:12.5px;color:var(--mute);margin-bottom:16px}
-.stages{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+.stages{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
 .stage{position:relative;padding:0 0 0 2px;background:none;border:0;text-align:left;font-family:inherit;cursor:pointer;border-radius:6px}
 .stage .bar{height:6px;border-radius:3px;background:var(--line);margin-bottom:9px;overflow:hidden}
 .stage .bar i{display:block;height:100%;background:var(--ink);border-radius:3px;transition:width .35s ease}
@@ -52,6 +52,8 @@ button{font-family:inherit;font-size:13px;cursor:pointer}
 .stage .l{font-size:12px;color:var(--ink2);margin-top:4px;font-weight:600}
 .stage .d{font-size:11px;color:var(--mute);margin-top:1px}
 .stage[aria-pressed="true"] .n{color:var(--green)}
+.stage.new .bar i{background:var(--violet)}
+.stage.new[aria-pressed="true"] .n{color:var(--violet)}
 .stage.dim{opacity:.4}
 
 .kpis{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
@@ -67,7 +69,7 @@ input[type=search]{min-width:200px;flex:1}
 .chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;color:var(--ink2)}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
 
-.cols{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:14px;align-items:start}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:24px;align-items:start}
 .board{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
 
 /* 상태 탭 */
@@ -80,7 +82,7 @@ input[type=search]{min-width:200px;flex:1}
 .tab[aria-selected="true"] .c{color:var(--ink)}
 .tab.off[aria-selected="true"]{border-bottom-color:var(--mute);color:var(--mute)}
 
-.board-head{display:flex;align-items:center;gap:10px;padding:11px 18px;border-bottom:1px solid var(--line2);font-size:12px;color:var(--mute)}
+.board-head{display:flex;align-items:center;gap:10px;padding:11px 20px;border-bottom:1px solid var(--line2);font-size:12px;color:var(--mute)}
 .board-head .sortbox{margin-left:auto;display:flex;align-items:center;gap:6px}
 .board-head select{padding:5px 8px;font-size:12px}
 
@@ -516,11 +518,22 @@ function render() {
 }
 
 function renderStages() {
-  const base = ROWS.filter(r => !r.offPipeline && r.curStage !== -1);
+  const base = ROWS.filter(r => !r.offPipeline); // 대기/보류만 제외, '신규'는 포함해서 전체 모수로 씀
+  const newCount = base.filter(r => r.curStage === -1).length;
   const counts = STAGES.map((_, i) => base.filter(r => r.curStage === i).length);
-  const max = Math.max(1, ...counts), total = base.length;
+  const total = base.length;
+  const max = Math.max(1, newCount, ...counts);
 
-  document.getElementById('stages').innerHTML = STAGES.map((s, i) => `
+  const newBtn = `
+    <button class="stage new ${F.stage === -1 ? 'on' : ''} ${F.stage !== null && F.stage !== -1 ? 'dim' : ''}"
+            data-stage="-1" aria-pressed="${F.stage === -1}">
+      <div class="bar"><i style="width:${newCount / max * 100}%"></i></div>
+      <div class="n">${newCount}</div>
+      <div class="l">신규</div>
+      <div class="d">${total ? Math.round(newCount / total * 100) : 0}%</div>
+    </button>`;
+
+  const stageBtns = STAGES.map((s, i) => `
     <button class="stage ${F.stage === i ? 'on' : ''} ${F.stage !== null && F.stage !== i ? 'dim' : ''}"
             data-stage="${i}" aria-pressed="${F.stage === i}">
       <div class="bar"><i style="width:${counts[i] / max * 100}%"></i></div>
@@ -529,9 +542,13 @@ function renderStages() {
       <div class="d">${total ? Math.round(counts[i] / total * 100) : 0}%</div>
     </button>`).join('');
 
-  const peak = counts.indexOf(Math.max(...counts));
+  document.getElementById('stages').innerHTML = newBtn + stageBtns;
+
+  const labels = ['신규', ...STAGES];
+  const allCounts = [newCount, ...counts];
+  const peak = allCounts.indexOf(Math.max(...allCounts));
   document.getElementById('pipeLead').textContent = total
-    ? `${STAGES[peak]} 단계에 ${counts[peak]}건이 몰려 있습니다. 막대를 누르면 그 단계만 봅니다.`
+    ? `${labels[peak]}${peak === 0 ? '' : ' 단계'}에 ${allCounts[peak]}건이 몰려 있습니다. 막대를 누르면 그 단계만 봅니다.`
     : '표시할 과제가 없습니다.';
 }
 
