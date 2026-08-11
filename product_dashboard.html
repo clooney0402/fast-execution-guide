@@ -191,7 +191,11 @@ input[type=search]{min-width:200px;flex:1}
     <div class="stages" id="stages"></div>
   </section>
 
-  <div class="kpis" id="kpis"></div>
+  <section class="pipeline">
+    <h2>월별 릴리즈 현황</h2>
+    <div class="lead" id="releaseLead">완료일정 기준으로 릴리즈된 과제 수를 월별로 보여줍니다.</div>
+    <div class="stages" id="releaseMonths" style="grid-template-columns:repeat(auto-fit,minmax(84px,1fr))"></div>
+  </section>
 
   <div class="filters">
     <input type="search" id="q" placeholder="과제명·PM·부서 검색" aria-label="검색">
@@ -239,11 +243,6 @@ input[type=search]{min-width:200px;flex:1}
         <div class="note">필터 적용 결과 기준</div>
         <div id="domainDist"></div>
       </div>
-      <div class="panel">
-        <h3>월별 릴리즈 건수</h3>
-        <div class="note">완료일정 기준 · 상태 탭 외 필터는 반영됩니다</div>
-        <div id="releaseByMonth"></div>
-      </div>
     </aside>
   </div>
 </div>
@@ -266,16 +265,20 @@ const STAGES = ['기획', '디자인', '개발', 'QA', '릴리즈'];
 const STATUS_MAP = {
   // '신규'는 아직 파이프라인에 들어오기 전 단계라 '기획' 버킷에 합치지 않고 따로 뺍니다 (탭 순서상 가장 앞에 둠)
   '신규':       [-1, true],
+  '기획대기':   [-1, true],
   '기획검토':   [0, true],
   '기획중':     [0, true],
   '기획완료':   [0, false],
   '디자인검토': [1, true],
   '디자인중':   [1, true],
+  '디자인진행': [1, true],
   '디자인완료': [1, false],
+  '개발대기':   [1, false], // 디자인 끝, 개발 착수 전
   '개발중':     [2, true],
   '개발완료':   [2, false],
   'QA중':       [3, true],
   'QA완료':     [3, false],
+  '릴리즈':     [4, false],
   '릴리즈완료': [4, false],
   '배포완료':   [4, false],
   // 축약형 상태값
@@ -435,15 +438,19 @@ function parseCSV(text) {
 }
 
 async function load() {
+  const btn = document.getElementById('reload');
+  const prevLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = '불러오는 중…';
+
   const banner = document.getElementById('banner');
   banner.innerHTML = '';
   try {
     if (CONFIG.API_URL) {
-      const res = await fetch(CONFIG.API_URL);
+      const res = await fetch(CONFIG.API_URL, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       ROWS = (await res.json()).map(aliasRow).map(shape); MODE = 'api';
     } else if (CONFIG.SHEET_CSV_URL) {
-      const res = await fetch(CONFIG.SHEET_CSV_URL);
+      const res = await fetch(CONFIG.SHEET_CSV_URL, { cache: 'no-store' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       ROWS = parseCSV(await res.text()).map(shape); MODE = 'csv';
     } else {
@@ -464,6 +471,9 @@ async function load() {
   document.getElementById('stamp').textContent = new Date().toLocaleTimeString('ko-KR', { hour12: false });
   buildFilters();
   render();
+
+  btn.disabled = false; btn.textContent = prevLabel;
+  toast(`새로고침 완료 · ${ROWS.length}건 불러옴`);
 }
 
 /* ═══════════════ 7. 필터 ═══════════════ */
@@ -527,7 +537,7 @@ function render() {
   const rows = base.filter(r => !F.status || r.statusKey === F.status);
 
   renderStages();
-  renderKPI(rows);
+  renderReleaseMonths();
   renderTabs(base);
   renderList(rows);
   renderSide(rows, base);
@@ -545,7 +555,7 @@ function renderStages() {
             data-stage="-1" aria-pressed="${F.stage === -1}">
       <div class="bar"><i style="width:${newCount / max * 100}%"></i></div>
       <div class="n">${newCount}</div>
-      <div class="l">신규</div>
+      <div class="l">착수 전</div>
       <div class="d">${total ? Math.round(newCount / total * 100) : 0}%</div>
     </button>`;
 
@@ -560,7 +570,7 @@ function renderStages() {
 
   document.getElementById('stages').innerHTML = newBtn + stageBtns;
 
-  const labels = ['신규', ...STAGES];
+  const labels = ['착수 전', ...STAGES];
   const allCounts = [newCount, ...counts];
   const peak = allCounts.indexOf(Math.max(...allCounts));
   document.getElementById('pipeLead').textContent = total
@@ -570,30 +580,51 @@ function renderStages() {
 
 const PRIORITY_LEVELS = ['P1', 'P2', 'P3', 'P4', 'P5'];
 
-function renderKPI(rows) {
-  const late = rows.filter(r => r.late).length;
-  const mine = rows.filter(r => r.month === thisMonth).length;
+function renderReleaseMonths() {
+  // 완료일정 기준 월별 릴리즈 건수 — 상태 탭 선택과 무관하게 항상 전체 릴리즈 이력을 보여줌
+  const byMonth = {};
+  ROWS.forEach(r => {
+    if (!r.done) return;
+    const m = (r['완료일정'] || '').slice(0, 7);
+    if (!m) return;
+    byMonth[m] = (byMonth[m] || 0) + 1;
+  });
+  const months = Object.keys(byMonth).sort();
+  const el = document.getElementById('releaseMonths');
+  const lead = document.getElementById('releaseLead');
 
-  const priCounts = {};
-  PRIORITY_LEVELS.forEach(p => { priCounts[p] = 0; });
-  rows.forEach(r => { if (priCounts[r.priLabel] !== undefined) priCounts[r.priLabel]++; });
-  const priCards = PRIORITY_LEVELS
-    .map(p => `<div class="kpi"><b>${priCounts[p]}</b><span>${p}</span></div>`)
-    .join('');
-
-  document.getElementById('kpis').innerHTML = `
-    <div class="kpi"><b>${rows.length}</b><span>표시 중</span></div>
-    <div class="kpi"><b>${mine}</b><span>이번 달 목표</span></div>
-    ${priCards}
-    ${late ? `<div class="kpi warn"><b>${late}</b><span>목표월 초과</span></div>` : ''}`;
+  if (!months.length) {
+    el.innerHTML = '';
+    lead.textContent = '완료일정이 기록된 릴리즈가 아직 없습니다.';
+    return;
+  }
+  lead.textContent = '완료일정 기준으로 릴리즈된 과제 수를 월별로 보여줍니다.';
+  const max = Math.max(1, ...months.map(m => byMonth[m]));
+  const total = months.reduce((s, m) => s + byMonth[m], 0);
+  el.innerHTML = months.map(m => `
+    <div class="stage" style="cursor:default">
+      <div class="bar"><i style="width:${byMonth[m] / max * 100}%"></i></div>
+      <div class="n">${byMonth[m]}</div>
+      <div class="l">${esc(m)}</div>
+      <div class="d">${total ? Math.round(byMonth[m] / total * 100) : 0}%</div>
+    </div>`).join('');
 }
+
+// 시트 '상태' 컬럼 드롭다운에 정의된 전체 상태값 — 실제 데이터가 없어도 탭에 항상 0으로 표시됩니다
+const CANONICAL_STATUSES = [
+  '신규', '기획대기', '기획검토', '기획중', '기획완료',
+  '디자인진행', '디자인완료', '개발대기', '개발중', '개발완료',
+  'QA중', 'QA완료', '릴리즈', '보류'
+];
 
 function renderTabs(base) {
   const counts = {};
   base.forEach(r => { counts[r.statusKey] = (counts[r.statusKey] || 0) + 1; });
-  // 다른 필터 때문에 지금 0건이어도 탭 자체는 항상 보이도록, 전체 ROWS에 존재하는 상태값 기준으로 만듦
-  const allKeys = [...new Set(ROWS.map(r => r.statusKey))];
-  const keys = allKeys.sort((a, b) => statusOrder(a) - statusOrder(b));
+  // 혹시 CANONICAL_STATUSES에 없는 값이 시트에 실제로 있으면(오타 등) 빠뜨리지 않고 뒤에 추가로 붙임
+  const extra = [...new Set(ROWS.map(r => r.statusKey))]
+    .filter(k => !CANONICAL_STATUSES.includes(k))
+    .sort((a, b) => statusOrder(a) - statusOrder(b));
+  const keys = [...CANONICAL_STATUSES, ...extra];
 
   document.getElementById('tabs').innerHTML =
     `<button class="tab" role="tab" data-status="" aria-selected="${!F.status}">
@@ -718,18 +749,6 @@ function renderSide(rows, base) {
     .map(([k, v]) => `<div class="bd"><span>${esc(k)}</span><b>${v}</b></div>`).join('')
     || '<div class="note">표시할 과제가 없습니다.</div>';
 
-  // 완료일정 기준 월별 릴리즈 건수 — 상태 탭 선택과 무관하게 항상 전체 릴리즈 이력을 보여주도록 base 사용
-  const byMonth = {};
-  base.forEach(r => {
-    if (!r.done) return;
-    const m = (r['완료일정'] || '').slice(0, 7);
-    if (!m) return;
-    byMonth[m] = (byMonth[m] || 0) + 1;
-  });
-  const months = Object.keys(byMonth).sort();
-  document.getElementById('releaseByMonth').innerHTML = months.length
-    ? months.map(m => `<div class="bd"><span>${esc(m)}</span><b>${byMonth[m]}</b></div>`).join('')
-    : '<div class="note">완료일정이 기록된 릴리즈가 없습니다.</div>';
 }
 
 /* ═══════════════ 9. 드래그 정렬 ═══════════════ */
