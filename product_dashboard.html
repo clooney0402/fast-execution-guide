@@ -134,7 +134,10 @@ input[type=search]{min-width:200px;flex:1}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px}
 .panel h3{font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);margin:0 0 3px}
 .panel .note{font-size:11.5px;color:var(--mute);margin-bottom:12px;line-height:1.4}
-.load{margin-bottom:11px}.load:last-child{margin-bottom:0}
+.load{margin-bottom:11px;cursor:pointer;border-radius:8px;transition:background .15s ease}
+.load:last-child{margin-bottom:0}
+.load:hover{background:var(--paper)}
+.load:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .load .r1{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;margin-bottom:4px}
 .load .r1 b{font-weight:700}
 .load .r1 span{font-family:var(--mono);font-size:11px;color:var(--mute)}
@@ -221,6 +224,11 @@ input[type=search]{min-width:200px;flex:1}
     </div>
 
     <aside class="side">
+      <div class="panel">
+        <h3>인입부서별 현황</h3>
+        <div class="note">릴리즈 완료 제외 · 건수 기준</div>
+        <div id="deptLoad"></div>
+      </div>
       <div class="panel">
         <h3>PM별 리소스 현황</h3>
         <div class="note">릴리즈 완료 제외 · 건수 기준</div>
@@ -472,9 +480,17 @@ function fillSelect(id, label, key, sortFn) {
 }
 function buildFilters() {
   fillSelect('fPM', '담당PM', '담당PM');
+  if (ROWS.some(r => !r['담당PM'])) {
+    document.getElementById('fPM').insertAdjacentHTML('beforeend', '<option value="__UNASSIGNED__">미배정</option>');
+    if (F.PM === '__UNASSIGNED__') document.getElementById('fPM').value = '__UNASSIGNED__';
+  }
   fillSelect('fType', '타입', '타입');
   fillSelect('fDomain', '도메인', '도메인');
   fillSelect('fDept', '인입부서', '인입부서');
+  if (ROWS.some(r => !r['인입부서'])) {
+    document.getElementById('fDept').insertAdjacentHTML('beforeend', '<option value="__UNASSIGNED__">부서 미상</option>');
+    if (F.Dept === '__UNASSIGNED__') document.getElementById('fDept').value = '__UNASSIGNED__';
+  }
   fillSelect('fMonth', '목표월', 'month', (a, b) => a.localeCompare(b));
 }
 
@@ -483,10 +499,10 @@ function baseFiltered() {
   const q = F.q.toLowerCase();
   return ROWS.filter(r => {
     if (q && ![r['과제명'], r['담당PM'], r['인입부서'], r['도메인']].join(' ').toLowerCase().includes(q)) return false;
-    if (F.PM && r['담당PM'] !== F.PM) return false;
+    if (F.PM) { if (F.PM === '__UNASSIGNED__') { if (r['담당PM']) return false; } else if (r['담당PM'] !== F.PM) return false; }
     if (F.Type && r['타입'] !== F.Type) return false;
     if (F.Domain && r['도메인'] !== F.Domain) return false;
-    if (F.Dept && r['인입부서'] !== F.Dept) return false;
+    if (F.Dept) { if (F.Dept === '__UNASSIGNED__') { if (r['인입부서']) return false; } else if (r['인입부서'] !== F.Dept) return false; }
     if (F.Month && r.month !== F.Month) return false;
     if (F.late && !r.late) return false;
     if (F.stage !== null && r.curStage !== F.stage) return false;
@@ -658,6 +674,25 @@ function renderList(rows) {
 
 function renderSide(rows, base) {
   const active = rows.filter(r => !r.done && !r.offPipeline);
+
+  const byDept = {};
+  active.forEach(r => {
+    const k = r['인입부서'] || '부서 미상';
+    byDept[k] = byDept[k] || { n: 0, late: 0 };
+    byDept[k].n++; if (r.late) byDept[k].late++;
+  });
+  const depts = Object.entries(byDept).sort((a, b) => {
+    if (a[0] === '부서 미상') return 1;
+    if (b[0] === '부서 미상') return -1;
+    return b[1].n - a[1].n;
+  });
+  const deptMax = Math.max(1, ...depts.map(d => d[1].n));
+  document.getElementById('deptLoad').innerHTML = depts.length ? depts.map(([name, v]) => `
+    <div class="load" data-dept="${esc(name === '부서 미상' ? '__UNASSIGNED__' : name)}" role="button" tabindex="0">
+      <div class="r1"><b>${esc(name)}</b><span>${v.n}건${v.late ? ` · 초과 ${v.late}` : ''}</span></div>
+      <div class="track"><i class="${v.late ? 'hot' : ''}" style="width:${v.n / deptMax * 100}%"></i></div>
+    </div>`).join('') : '<div class="note">진행 중인 과제가 없습니다.</div>';
+
   const byPM = {};
   active.forEach(r => {
     const k = r['담당PM'] || '미배정';
@@ -671,7 +706,7 @@ function renderSide(rows, base) {
   });
   const max = Math.max(1, ...pms.map(p => p[1].n));
   document.getElementById('pmLoad').innerHTML = pms.length ? pms.map(([name, v]) => `
-    <div class="load">
+    <div class="load" data-pm="${esc(name === '미배정' ? '__UNASSIGNED__' : name)}" role="button" tabindex="0">
       <div class="r1"><b>${esc(name)}</b><span>${v.n}건${v.late ? ` · 초과 ${v.late}` : ''}</span></div>
       <div class="track"><i class="${v.late ? 'hot' : ''}" style="width:${v.n / max * 100}%"></i></div>
     </div>`).join('') : '<div class="note">진행 중인 과제가 없습니다.</div>';
@@ -777,6 +812,30 @@ document.getElementById('stages').addEventListener('click', e => {
   const i = Number(b.dataset.stage);
   F.stage = (F.stage === i) ? null : i;
   render();
+});
+document.getElementById('deptLoad').addEventListener('click', e => {
+  const b = e.target.closest('.load[data-dept]'); if (!b) return;
+  F.Dept = (F.Dept === b.dataset.dept) ? '' : b.dataset.dept;
+  document.getElementById('fDept').value = F.Dept;
+  render();
+  document.getElementById('list').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+document.getElementById('deptLoad').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const b = e.target.closest('.load[data-dept]'); if (!b) return;
+  e.preventDefault(); b.click();
+});
+document.getElementById('pmLoad').addEventListener('click', e => {
+  const b = e.target.closest('.load[data-pm]'); if (!b) return;
+  F.PM = (F.PM === b.dataset.pm) ? '' : b.dataset.pm;
+  document.getElementById('fPM').value = F.PM;
+  render();
+  document.getElementById('list').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+document.getElementById('pmLoad').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const b = e.target.closest('.load[data-pm]'); if (!b) return;
+  e.preventDefault(); b.click();
 });
 document.getElementById('reset').addEventListener('click', () => {
   Object.assign(F, { q:'', PM:'', Type:'', Domain:'', Dept:'', Month:'', stage:null, late:false, status:'' });
