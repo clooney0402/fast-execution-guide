@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>식봄 추천 검수 콘솔 — 프로토타입</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F6F5F1; --card:#FFFFFF; --ink:#17181A; --mute:#6B6B66; --faint:#94948D;
+  --rule:#E4E3DC; --rule2:#D3D2C9;
+  --teal:#0E6B57; --teal-bg:#E4F0EC;
+  --brick:#A63A26; --brick-bg:#F8EAE6;
+  --amber:#8A6210; --amber-bg:#FAF0DC;
+  --slate:#22262E;
+  --sans:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,select,input{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--slate);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+header{background:var(--slate);color:#EDECE6;padding:14px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header h1{font-size:15px;font-weight:600;letter-spacing:-0.01em}
+.tag{font-family:var(--mono);font-size:10px;letter-spacing:.06em;border:1px solid rgba(237,236,230,.35);padding:2px 7px;border-radius:3px;color:#C9C8C0}
+header .spacer{margin-left:auto}
+header .ver{font-family:var(--mono);font-size:11px;color:#9C9B94}
+
+.tabs{display:flex;gap:0;background:var(--card);border-bottom:1px solid var(--rule);padding:0 22px}
+.tabs button{background:none;border:none;padding:11px 16px;font-size:13px;color:var(--mute);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--slate);font-weight:600}
+
+.wrap{display:grid;grid-template-columns:296px minmax(0,1fr);gap:0;align-items:start}
+.rail{border-right:1px solid var(--rule);background:var(--card);min-height:calc(100vh - 96px);padding:18px}
+.main{padding:20px 22px 60px}
+
+.blk{margin-bottom:22px}
+.blk h2{font-size:11px;font-family:var(--mono);letter-spacing:.07em;color:var(--faint);text-transform:uppercase;margin-bottom:10px}
+label.f{display:block;font-size:12px;color:var(--mute);margin-bottom:5px}
+select,input[type=text]{width:100%;background:var(--paper);border:1px solid var(--rule2);border-radius:5px;padding:7px 9px;font-size:13px}
+select:hover,input[type=text]:hover{border-color:#B8B7AD}
+.field{margin-bottom:12px}
+
+.wrow{display:grid;grid-template-columns:66px 1fr 34px;align-items:center;gap:8px;margin-bottom:9px}
+.wrow span:first-child{font-size:12px;color:var(--mute)}
+.wrow .val{font-family:var(--mono);font-size:12px;text-align:right}
+input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;width:100%}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--rule2);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--slate);margin-top:-5px}
+input[type=range]::-moz-range-track{height:3px;background:var(--rule2);border-radius:2px}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border:none;border-radius:50%;background:var(--slate)}
+.wdiff{color:var(--teal);font-weight:600}
+
+.btn{background:var(--card);border:1px solid var(--rule2);border-radius:5px;padding:7px 12px;font-size:13px}
+.btn:hover{border-color:#A9A89E;background:#FBFBF8}
+.btn.primary{background:var(--slate);color:#F2F1EB;border-color:var(--slate)}
+.btn.primary:hover{background:#2F343E}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:4px}
+.btnrow{display:flex;gap:7px;flex-wrap:wrap}
+
+.chk{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mute);margin-bottom:7px}
+.chk input{accent-color:var(--slate)}
+
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:7px;overflow:hidden;margin-bottom:14px}
+.met{background:var(--card);padding:12px 14px}
+.met .k{font-size:11.5px;color:var(--mute);margin-bottom:4px}
+.met .v{font-family:var(--mono);font-size:23px;font-weight:500;letter-spacing:-.02em}
+.met .s{font-size:11.5px;color:var(--faint);margin-top:2px}
+.met.bad .v{color:var(--brick)}
+.met.ok .v{color:var(--teal)}
+
+.banner{border-radius:6px;padding:10px 13px;font-size:12.5px;margin-bottom:18px;display:flex;gap:8px;align-items:flex-start}
+.banner.bad{background:var(--brick-bg);color:var(--brick)}
+.banner.ok{background:var(--teal-bg);color:var(--teal)}
+.banner b{font-weight:600}
+
+.lhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;gap:10px;flex-wrap:wrap}
+.lhead h3{font-size:14px;font-weight:600}
+.lhead .note{font-size:11.5px;color:var(--faint);font-family:var(--mono)}
+
+.list{background:var(--card);border:1px solid var(--rule);border-radius:7px;overflow:hidden}
+.item{display:grid;grid-template-columns:3px 30px minmax(0,1fr) auto;gap:0;border-bottom:1px solid var(--rule)}
+.item:last-child{border-bottom:none}
+.item.blocked{background:#FCFAF9}
+.gate{background:var(--teal)}
+.item.blocked .gate{background:var(--brick)}
+.item.warn .gate{background:#D9A83C}
+.rk{font-family:var(--mono);font-size:12px;color:var(--faint);padding:13px 0 0 10px;text-align:left}
+.body{padding:12px 12px 12px 6px;min-width:0}
+.nm{font-size:13.5px;font-weight:500;margin-bottom:5px;letter-spacing:-.01em}
+.item.blocked .nm{color:#7C7B74;text-decoration:line-through;text-decoration-color:#C9BDB8}
+.meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.pill{font-size:11px;padding:2px 7px;border-radius:3px;background:var(--paper);color:var(--mute);white-space:nowrap}
+.pill.fresh{background:var(--teal-bg);color:var(--teal)}
+.pill.blk{background:var(--brick-bg);color:var(--brick);font-weight:500}
+.pill.wrn{background:var(--amber-bg);color:var(--amber)}
+.pill.why{background:#EEEDF6;color:#453E8C}
+.pill .m{font-family:var(--mono)}
+.side{padding:12px 12px 12px 8px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;white-space:nowrap}
+.score{font-family:var(--mono);font-size:13px;font-weight:500}
+.delta{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.delta.up{color:var(--teal)}
+.delta.dn{color:var(--brick)}
+.flagbtn{border:1px solid var(--rule2);background:var(--card);border-radius:4px;padding:3px 8px;font-size:11px;color:var(--mute)}
+.flagbtn.on{background:var(--brick-bg);border-color:#E0BEB4;color:var(--brick);font-weight:500}
+
+.tray{position:sticky;bottom:0;background:var(--card);border:1px solid var(--rule);border-radius:7px;padding:13px 15px;margin-top:18px}
+.tray h3{font-size:13px;font-weight:600;margin-bottom:8px;display:flex;gap:7px;align-items:center}
+.cnt{font-family:var(--mono);font-size:11px;background:var(--slate);color:#F2F1EB;padding:1px 6px;border-radius:9px}
+.issue{display:flex;gap:8px;align-items:center;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--rule);flex-wrap:wrap}
+.issue:last-of-type{border-bottom:none}
+.issue select{width:auto;padding:3px 6px;font-size:11.5px}
+.issue .x{margin-left:auto;background:none;border:none;color:var(--faint);font-size:14px;line-height:1}
+.empty{font-size:12px;color:var(--faint);padding:6px 0}
+
+table.batch{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--rule);border-radius:7px;overflow:hidden;font-size:12.5px}
+table.batch th{text-align:left;font-size:11px;font-family:var(--mono);letter-spacing:.05em;color:var(--faint);text-transform:uppercase;padding:9px 12px;border-bottom:1px solid var(--rule);font-weight:400}
+table.batch td{padding:10px 12px;border-bottom:1px solid var(--rule)}
+table.batch tr:last-child td{border-bottom:none}
+table.batch td.n{font-family:var(--mono);text-align:right}
+.bar{height:5px;border-radius:3px;background:var(--rule);overflow:hidden;width:70px;display:inline-block;vertical-align:middle;margin-right:7px}
+.bar i{display:block;height:100%;background:var(--teal)}
+.bar.low i{background:var(--brick)}
+
+textarea{width:100%;min-height:190px;font-family:var(--mono);font-size:11.5px;line-height:1.65;border:1px solid var(--rule2);border-radius:6px;padding:11px;background:var(--card);resize:vertical}
+.hint{font-size:11.5px;color:var(--faint);margin-top:7px}
+.hidden{display:none}
+@media (max-width:880px){.wrap{grid-template-columns:1fr}.rail{min-height:0;border-right:none;border-bottom:1px solid var(--rule)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>식봄 추천 검수 콘솔</h1>
+  <span class="tag">PROTOTYPE</span>
+  <span class="spacer"></span>
+  <span class="ver">reco-api · mock</span>
+</header>
+
+<div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" id="tab-single" onclick="setTab('single')">단건 샘플링</button>
+  <button role="tab" aria-selected="false" id="tab-batch" onclick="setTab('batch')">배치 실행</button>
+  <button role="tab" aria-selected="false" id="tab-req" onclick="setTab('req')">튜닝 요청서</button>
+</div>
+
+<div class="wrap">
+<aside class="rail">
+  <div class="blk">
+    <h2>조회 조건</h2>
+    <div class="field"><label class="f" for="slot">지면 · 구좌</label>
+      <select id="slot">
+        <option value="display">전시 — 분식 사장님이 많이 산 상품</option>
+        <option value="cart">장바구니 — 함께 담은 상품</option>
+        <option value="search">검색 — 연관 추천</option>
+      </select></div>
+    <div class="field"><label class="f" for="biz">대상 사업장</label>
+      <select id="biz">
+        <option value="0">A · 분식 / 서울 강서 / 재구매 24회</option>
+        <option value="1">B · 업종미상 / 전북 익산 / 첫구매</option>
+        <option value="2">C · 한식 / 경기 부천 / 재구매 8회</option>
+      </select></div>
+    <div class="field"><label class="f" for="seed">시드</label>
+      <input type="text" id="seed" value="분식"></div>
+    <div class="chk"><input type="checkbox" id="hideBlocked"><label for="hideBlocked">구매 불가 상품 숨기기</label></div>
+    <div class="chk"><input type="checkbox" id="showDelta" checked><label for="showDelta">운영 v2.3 대비 순위 변동 표시</label></div>
+  </div>
+
+  <div class="blk">
+    <h2>로직 가중치</h2>
+    <div id="weights"></div>
+    <div class="btnrow" style="margin-top:12px">
+      <button class="btn sm" onclick="applyPreset('v23')">v2.3 운영값</button>
+      <button class="btn sm" onclick="applyPreset('v24')">v2.4 개발값</button>
+    </div>
+    <p class="hint">슬라이더를 움직이면 결과가 즉시 다시 정렬됩니다. 조정한 값은 튜닝 요청서에 그대로 담깁니다.</p>
+  </div>
+
+  <div class="blk">
+    <h2>내보내기</h2>
+    <div class="btnrow">
+      <button class="btn sm" onclick="exportCsv()">결과 CSV</button>
+      <button class="btn sm" onclick="setTab('req')">요청서 열기</button>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <section id="view-single">
+    <div class="metrics" id="metrics"></div>
+    <div id="banner"></div>
+    <div class="lhead">
+      <h3>추천 결과</h3>
+      <span class="note" id="lnote"></span>
+    </div>
+    <div class="list" id="list"></div>
+
+    <div class="tray">
+      <h3>이슈 트레이 <span class="cnt" id="icount">0</span></h3>
+      <div id="issues"></div>
+    </div>
+  </section>
+
+  <section id="view-batch" class="hidden">
+    <div class="lhead">
+      <h3>배치 실행</h3>
+      <span class="note">현재 가중치 기준 · 사업장 3건 × 지면 3종</span>
+    </div>
+    <div class="banner ok" style="margin-bottom:14px">수기 추출 대신 전 조합을 한 번에 돌려 구매가능률이 무너지는 지점을 먼저 찾습니다.</div>
+    <table class="batch" id="batchTable"></table>
+    <p class="hint">실제 구현에서는 샘플셋을 사업장 50~200개로 확장해 구좌별 회귀 검증에 사용합니다.</p>
+  </section>
+
+  <section id="view-req" class="hidden">
+    <div class="lhead">
+      <h3>튜닝 요청서</h3>
+      <span class="note">이슈 트레이 + 가중치 조정값 자동 반영</span>
+    </div>
+    <textarea id="reqText" readonly></textarea>
+    <div class="btnrow" style="margin-top:10px">
+      <button class="btn primary" onclick="copyReq()">복사</button>
+      <button class="btn" onclick="setTab('single')">결과로 돌아가기</button>
+    </div>
+    <p class="hint" id="copyHint"></p>
+  </section>
+</main>
+</div>
+
+<script>
+const SIGNALS=[
+ {k:'fit',n:'업종 적합'},{k:'repeat',n:'재구매·연관'},{k:'pop',n:'판매량'},
+ {k:'price',n:'가격'},{k:'fresh',n:'싱싱배송'},{k:'nw',n:'신규 상품'}
+];
+const PRESETS={
+ v23:{fit:70,repeat:50,pop:80,price:40,fresh:20,nw:10},
+ v24:{fit:60,repeat:80,pop:50,price:55,fresh:50,nw:25}
+};
+let W={...PRESETS.v23};
+
+const BIZ=[
+ {n:'A',ind:'분식',region:'서울 강서',fresh:true,orders:24,avg:180000},
+ {n:'B',ind:'업종미상',region:'전북 익산',fresh:false,orders:0,avg:0},
+ {n:'C',ind:'한식',region:'경기 부천',fresh:true,orders:8,avg:95000}
+];
+
+function p(nm,sel,dv,cat,price,s,f){return{nm,sel,dv,cat,price,s,f:f||{}}}
+const POOL={
+display:{seedLabel:'시드 (업종)',seed:'분식',items:[
+ p('부산어묵 사각 1kg','대성유통','싱싱','수산가공',6900,{fit:95,repeat:70,pop:92,price:60,fresh:90,nw:5}),
+ p('떡볶이떡 밀떡 3kg','한울식자재','직배송','면·떡',8400,{fit:98,repeat:88,pop:85,price:70,fresh:10,nw:5}),
+ p('고춧가루 국산 1kg','대성유통','택배','양념',24000,{fit:72,repeat:45,pop:70,price:35,fresh:5,nw:10}),
+ p('깐대파 500g','프레시원','싱싱','채소',3200,{fit:80,repeat:75,pop:88,price:85,fresh:95,nw:15}),
+ p('튀김가루 20kg','한울식자재','직배송','가공식품',27000,{fit:85,repeat:62,pop:64,price:50,fresh:5,nw:5},{minOrder:120000}),
+ p('조미김 파래 100매','동해수산','택배','수산가공',12500,{fit:55,repeat:30,pop:45,price:55,fresh:5,nw:90},{soldOut:true}),
+ p('찰순대 2kg','대성유통','싱싱','축산가공',11800,{fit:90,repeat:66,pop:74,price:58,fresh:85,nw:20}),
+ p('어묵국물 다시팩 50입','한울식자재','택배','양념',9900,{fit:88,repeat:80,pop:58,price:72,fresh:5,nw:35}),
+ p('양배추 8kg','프레시원','싱싱','채소',14500,{fit:70,repeat:72,pop:80,price:78,fresh:92,nw:10},{soldOut:true}),
+ p('콩기름 18L','한울식자재','직배송','유지',42000,{fit:82,repeat:90,pop:76,price:45,fresh:5,nw:5}),
+ p('고기만두 3kg','동해수산','싱싱','축산가공',16900,{fit:76,repeat:48,pop:62,price:52,fresh:80,nw:55}),
+ p('라면사리 40개입','대성유통','택배','면·떡',13200,{fit:92,repeat:70,pop:68,price:80,fresh:5,nw:10}),
+ p('단무지 슬라이스 5kg','프레시원','직배송','가공식품',7600,{fit:78,repeat:58,pop:54,price:82,fresh:15,nw:12}),
+ p('쌈장 14kg','대성유통','직배송','양념',38000,{fit:45,repeat:85,pop:50,price:40,fresh:5,nw:5},{recent:true})
+]},
+cart:{seedLabel:'시드 (장바구니 상품)',seed:'삼겹살 목전지 2kg',items:[
+ p('상추 적축면 4kg','프레시원','싱싱','채소',18900,{fit:80,repeat:94,pop:88,price:60,fresh:95,nw:5}),
+ p('깻잎 200g×10','프레시원','싱싱','채소',12400,{fit:78,repeat:90,pop:76,price:68,fresh:92,nw:8}),
+ p('쌈장 14kg','대성유통','직배송','양념',38000,{fit:75,repeat:86,pop:70,price:42,fresh:5,nw:5},{recent:true}),
+ p('다진마늘 1kg','프레시원','싱싱','채소',7800,{fit:82,repeat:88,pop:84,price:74,fresh:88,nw:5}),
+ p('알루미늄 호일 30cm','한울식자재','택배','소모품',5400,{fit:60,repeat:78,pop:52,price:88,fresh:5,nw:10}),
+ p('양파 15kg','동해수산','직배송','채소',16200,{fit:70,repeat:74,pop:80,price:76,fresh:20,nw:5}),
+ p('파채 500g','프레시원','싱싱','채소',4100,{fit:84,repeat:82,pop:72,price:80,fresh:94,nw:22}),
+ p('된장 14kg','대성유통','직배송','양념',31000,{fit:55,repeat:60,pop:48,price:45,fresh:5,nw:5}),
+ p('꽃소금 5kg','한울식자재','택배','양념',6200,{fit:50,repeat:70,pop:44,price:86,fresh:5,nw:5}),
+ p('냉면사리 100인분','동해수산','직배송','면·떡',42000,{fit:48,repeat:35,pop:40,price:50,fresh:15,nw:70},{soldOut:true}),
+ p('참기름 1.8L','대성유통','택배','유지',28500,{fit:62,repeat:76,pop:58,price:48,fresh:5,nw:5}),
+ p('배추김치 10kg','프레시원','싱싱','반찬',24000,{fit:72,repeat:80,pop:78,price:62,fresh:86,nw:30})
+]},
+search:{seedLabel:'시드 (검색 키워드)',seed:'대파',items:[
+ p('깐대파 500g','프레시원','싱싱','채소',3200,{fit:96,repeat:78,pop:90,price:84,fresh:95,nw:10}),
+ p('대파 1단','프레시원','싱싱','채소',2600,{fit:98,repeat:74,pop:92,price:90,fresh:94,nw:5}),
+ p('대파채 1kg','프레시원','싱싱','채소',6900,{fit:90,repeat:66,pop:70,price:72,fresh:92,nw:25}),
+ p('쪽파 500g','대성유통','싱싱','채소',4800,{fit:64,repeat:52,pop:60,price:74,fresh:88,nw:18}),
+ p('양파 15kg','대성유통','직배송','채소',16200,{fit:52,repeat:70,pop:82,price:76,fresh:20,nw:5}),
+ p('부추 1kg','한울식자재','택배','채소',5600,{fit:48,repeat:44,pop:52,price:70,fresh:10,nw:20}),
+ p('흙대파 10kg','동해수산','직배송','채소',21000,{fit:86,repeat:58,pop:64,price:66,fresh:25,nw:12}),
+ p('다진대파 냉동 1kg','한울식자재','택배','가공식품',8200,{fit:74,repeat:62,pop:48,price:64,fresh:10,nw:78}),
+ p('파기름 1L','대성유통','택배','유지',12800,{fit:58,repeat:40,pop:36,price:52,fresh:5,nw:64}),
+ p('세척대파 2kg','프레시원','싱싱','채소',9400,{fit:88,repeat:60,pop:56,price:68,fresh:90,nw:40},{soldOut:true})
+]}};
+
+let issues=[], baseline=[];
+
+function gate(it,b){
+ const r=[];
+ if(it.dv==='싱싱'&&!b.fresh) r.push({t:'싱싱배송 권역 밖',block:true});
+ if(it.f.soldOut) r.push({t:'품절',block:true});
+ if(it.f.minOrder&&b.avg<it.f.minOrder) r.push({t:'최소주문 '+(it.f.minOrder/10000)+'만원 미달',block:true});
+ if(it.f.recent&&b.orders>0) r.push({t:'7일 내 구매',block:false});
+ return r;
+}
+function score(it,w){
+ let s=0,t=0;
+ SIGNALS.forEach(g=>{s+=w[g.k]*it.s[g.k];t+=w[g.k]});
+ return t?s/t:0;
+}
+function topWhy(it,w){
+ let best=null,bv=-1;
+ SIGNALS.forEach(g=>{const v=w[g.k]*it.s[g.k];if(v>bv){bv=v;best=g}});
+ return best.n+' '+Math.round(it.s[best.k]);
+}
+function rank(slot,bizIdx,w){
+ const b=BIZ[bizIdx];
+ return POOL[slot].items.map(it=>{
+   const g=gate(it,b);
+   return {it,g,blocked:g.some(x=>x.block),warn:g.length>0&&!g.some(x=>x.block),sc:score(it,w),why:topWhy(it,w)};
+ }).sort((a,c)=>c.sc-a.sc);
+}
+
+function buildWeights(){
+ document.getElementById('weights').innerHTML=SIGNALS.map(g=>
+  `<div class="wrow"><span>${g.n}</span><input type="range" min="0" max="100" step="5" value="${W[g.k]}" data-k="${g.k}" aria-label="${g.n} 가중치"><span class="val" id="v-${g.k}">${W[g.k]}</span></div>`).join('');
+ document.querySelectorAll('#weights input').forEach(el=>el.addEventListener('input',e=>{
+   W[e.target.dataset.k]=+e.target.value;
+   document.getElementById('v-'+e.target.dataset.k).textContent=e.target.value;
+   markDiff();render();
+ }));
+ markDiff();
+}
+function markDiff(){
+ SIGNALS.forEach(g=>{
+  const el=document.getElementById('v-'+g.k);
+  if(el) el.className='val'+(W[g.k]!==PRESETS.v23[g.k]?' wdiff':'');
+ });
+}
+function applyPreset(p){W={...PRESETS[p]};buildWeights();render()}
+
+function render(){
+ const slot=document.getElementById('slot').value, bi=+document.getElementById('biz').value, b=BIZ[bi];
+ document.getElementById('seed').value=POOL[slot].seed;
+ document.querySelector('label[for=seed]').textContent=POOL[slot].seedLabel;
+
+ baseline=rank(slot,bi,PRESETS.v23).map(r=>r.it.nm);
+ const rows=rank(slot,bi,W);
+ const hide=document.getElementById('hideBlocked').checked;
+ const showDelta=document.getElementById('showDelta').checked;
+ const shown=hide?rows.filter(r=>!r.blocked):rows;
+ const top=rows.slice(0,10);
+
+ const okCnt=top.filter(r=>!r.blocked).length;
+ const okPct=Math.round(okCnt/top.length*100);
+ const catTop=share(top.map(r=>r.it.cat)), selTop=share(top.map(r=>r.it.sel));
+ const freshPct=Math.round(top.filter(r=>r.it.dv==='싱싱'&&!r.blocked).length/top.length*100);
+
+ document.getElementById('metrics').innerHTML=[
+  m('구매가능률',okPct+'%',`상위 10건 중 ${10-okCnt}건 담기 불가`,okPct<80?'bad':'ok'),
+  m('카테고리 쏠림',catTop.pct+'%',catTop.key,catTop.pct>50?'bad':''),
+  m('판매자 쏠림',selTop.pct+'%',selTop.key,selTop.pct>50?'bad':''),
+  m('싱싱배송 비중',freshPct+'%','목표 50% 이상',freshPct>=50?'ok':'')
+ ].join('');
+
+ const blocked=top.filter(r=>r.blocked);
+ document.getElementById('banner').innerHTML = blocked.length
+  ? `<div class="banner bad"><span>●</span><span><b>${b.n} 사업장(${b.region})</b> 기준 상위 10건 중 ${blocked.length}건이 담기 불가입니다 — ${summarize(blocked)}. 랭킹 조정 전에 필터 단계에서 걸러야 합니다.</span></div>`
+  : `<div class="banner ok"><span>●</span><span>상위 10건 모두 구매 가능합니다. 순위 다양성과 가격 경쟁력 위주로 검토하세요.</span></div>`;
+
+ document.getElementById('lnote').textContent=`${shown.length}건 표시 · 가중치 ${SIGNALS.map(g=>W[g.k]).join('/')}`;
+
+ document.getElementById('list').innerHTML=shown.map((r,i)=>{
+  const bi2=baseline.indexOf(r.it.nm), d=bi2-i;
+  let dl='';
+  if(showDelta) dl = d>0?`<span class="delta up">▲${d}</span>`:d<0?`<span class="delta dn">▼${-d}</span>`:`<span class="delta">—</span>`;
+  const flags=r.g.map(g=>`<span class="pill ${g.block?'blk':'wrn'}">${g.t}</span>`).join('');
+  const on=issues.some(x=>x.nm===r.it.nm)?' on':'';
+  return `<div class="item ${r.blocked?'blocked':r.warn?'warn':''}">
+   <div class="gate"></div>
+   <div class="rk">${String(i+1).padStart(2,'0')}</div>
+   <div class="body">
+     <div class="nm">${r.it.nm}</div>
+     <div class="meta">
+       <span class="pill">${r.it.sel}</span>
+       <span class="pill ${r.it.dv==='싱싱'?'fresh':''}">${r.it.dv}</span>
+       <span class="pill"><span class="m">${r.it.price.toLocaleString()}</span>원</span>
+       <span class="pill why">${r.why}</span>
+       ${flags}
+     </div>
+   </div>
+   <div class="side">
+     <span class="score">${r.sc.toFixed(1)}</span>
+     ${dl}
+     <button class="flagbtn${on}" onclick="toggleIssue('${r.it.nm.replace(/'/g,"")}')">이슈</button>
+   </div></div>`;
+ }).join('');
+
+ renderIssues(); renderBatch(); renderReq();
+}
+function m(k,v,s,c){return `<div class="met ${c||''}"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`}
+function share(a){const c={};a.forEach(x=>c[x]=(c[x]||0)+1);let k='',n=0;for(const x in c)if(c[x]>n){n=c[x];k=x}return{key:k,pct:Math.round(n/a.length*100)}}
+function summarize(b){const c={};b.forEach(r=>r.g.filter(g=>g.block).forEach(g=>{const t=g.t.split(' ')[0];c[t]=(c[t]||0)+1;}));return Object.entries(c).map(([k,v])=>k+' '+v+'건').join(', ')}
+
+const REASONS=['업종 부적합','카테고리 중복','단가 이상','권역·재고 미필터','다양성 부족','시드 연관성 약함'];
+function toggleIssue(nm){
+ const i=issues.findIndex(x=>x.nm===nm);
+ if(i>=0) issues.splice(i,1); else issues.push({nm,r:REASONS[0]});
+ render();
+}
+function renderIssues(){
+ document.getElementById('icount').textContent=issues.length;
+ document.getElementById('issues').innerHTML = issues.length? issues.map((x,i)=>
+  `<div class="issue"><span>${x.nm}</span>
+   <select onchange="issues[${i}].r=this.value;renderReq()" aria-label="이슈 사유">
+   ${REASONS.map(r=>`<option ${r===x.r?'selected':''}>${r}</option>`).join('')}</select>
+   <button class="x" onclick="issues.splice(${i},1);render()" aria-label="이슈 삭제">×</button></div>`).join('')
+  : '<p class="empty">결과에서 이슈 버튼을 눌러 부적합 상품을 담아두세요. 사유와 함께 요청서로 넘어갑니다.</p>';
+}
+
+function renderBatch(){
+ const rows=[];
+ ['display','cart','search'].forEach(s=>BIZ.forEach((b,i)=>{
+  const r=rank(s,i,W).slice(0,10);
+  const ok=r.filter(x=>!x.blocked).length;
+  rows.push({s,b,ok:ok*10,fresh:Math.round(r.filter(x=>x.it.dv==='싱싱'&&!x.blocked).length/r.length*100),cat:share(r.map(x=>x.it.cat)).pct});
+ }));
+ const nm={display:'전시',cart:'장바구니',search:'검색'};
+ document.getElementById('batchTable').innerHTML=
+ `<tr><th>지면</th><th>사업장</th><th>구매가능률</th><th style="text-align:right">싱싱 비중</th><th style="text-align:right">카테고리 쏠림</th></tr>`+
+ rows.map(r=>`<tr><td>${nm[r.s]}</td><td>${r.b.n} · ${r.b.ind} / ${r.b.region}</td>
+  <td><span class="bar ${r.ok<80?'low':''}"><i style="width:${r.ok}%"></i></span><span class="mono">${r.ok}%</span></td>
+  <td class="n">${r.fresh}%</td><td class="n">${r.cat}%</td></tr>`).join('');
+}
+
+function renderReq(){
+ const slot=document.getElementById('slot').value, b=BIZ[+document.getElementById('biz').value];
+ const nm={display:'전시 — 분식 사장님이 많이 산 상품',cart:'장바구니 — 함께 담은 상품',search:'검색 — 연관 추천'};
+ const chg=SIGNALS.filter(g=>W[g.k]!==PRESETS.v23[g.k]);
+ let t=`[추천 튜닝 요청] ${nm[slot]}\n`;
+ t+=`대상 사업장: ${b.n} · ${b.ind} / ${b.region} / 주문 ${b.orders}회\n`;
+ t+=`기준 버전: v2.3 (운영)\n\n`;
+ t+=`■ 가중치 조정 제안\n`;
+ t+= chg.length? chg.map(g=>`  - ${g.n}: ${PRESETS.v23[g.k]} → ${W[g.k]}`).join('\n')+'\n' : '  - 조정 없음\n';
+ t+=`\n■ 부적합 상품\n`;
+ t+= issues.length? issues.map((x,i)=>`  ${i+1}. ${x.nm} — ${x.r}`).join('\n')+'\n' : '  - 없음\n';
+ const r=rank(slot,+document.getElementById('biz').value,W).slice(0,10);
+ const blocked=r.filter(x=>x.blocked);
+ t+=`\n■ 필터 단계 확인 요청\n`;
+ t+= blocked.length? blocked.map(x=>`  - ${x.it.nm}: ${x.g.filter(g=>g.block).map(g=>g.t).join(', ')}`).join('\n')+'\n'
+   : '  - 상위 10건 내 구매 불가 상품 없음\n';
+ t+=`\n■ 재현 조건\n  slot=${slot} / biz=${b.n} / weights=${SIGNALS.map(g=>g.k+':'+W[g.k]).join(',')}\n`;
+ document.getElementById('reqText').value=t;
+}
+function copyReq(){
+ const el=document.getElementById('reqText'); el.select(); document.execCommand('copy');
+ document.getElementById('copyHint').textContent='요청서를 복사했습니다. Jira 티켓이나 슬랙에 그대로 붙여넣으세요.';
+}
+function exportCsv(){
+ const slot=document.getElementById('slot').value, bi=+document.getElementById('biz').value;
+ const r=rank(slot,bi,W);
+ const head=['순위','상품명','판매자','배송타입','판매가','카테고리','스코어','추천근거','차단사유'];
+ const body=r.map((x,i)=>[i+1,x.it.nm,x.it.sel,x.it.dv,x.it.price,x.it.cat,x.sc.toFixed(1),x.why,x.g.map(g=>g.t).join('|')]);
+ const csv='\ufeff'+[head,...body].map(l=>l.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+ a.download=`reco-qa-${slot}-${BIZ[bi].n}.csv`; a.click();
+}
+function setTab(t){
+ ['single','batch','req'].forEach(x=>{
+  document.getElementById('view-'+x).classList.toggle('hidden',x!==t);
+  document.getElementById('tab-'+x).setAttribute('aria-selected',x===t);
+ });
+}
+['slot','biz','hideBlocked','showDelta'].forEach(id=>document.getElementById(id).addEventListener('change',render));
+buildWeights(); render();
+</script>
+</body>
+</html>
